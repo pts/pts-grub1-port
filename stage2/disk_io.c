@@ -21,6 +21,7 @@
 
 #include <shared.h>
 #include <filesys.h>
+#include <gpt.h>
 
 #ifdef SUPPORT_NETBOOT
 # define GRUB	1
@@ -29,6 +30,11 @@
 
 #ifdef GRUB_UTIL
 # include <device.h>
+#endif
+
+#if defined(GRUB_UTIL) && defined(__linux__)
+# include <sys/ioctl.h>		/* ioctl */
+# include <linux/fs.h>		/* BLKFLSBUF */
 #endif
 
 /* instrumentation variables */
@@ -366,6 +372,8 @@ int
 devwrite (int sector, int sector_count, char *buf)
 {
 #if defined(GRUB_UTIL) && defined(__linux__)
+  int ret;
+
   if (current_partition != 0xFFFFFF
       && is_disk_device (device_map, current_drive))
     {
@@ -373,8 +381,11 @@ devwrite (int sector, int sector_count, char *buf)
 	 embed a Stage 1.5 into a partition instead of a MBR, use system
 	 calls directly instead of biosdisk, because of the bug in
 	 Linux. *sigh*  */
-      return write_to_partition (device_map, current_drive, current_partition,
-				 sector, sector_count, buf);
+      ret = write_to_partition (device_map, current_drive, current_partition,
+				sector, sector_count, buf);
+      if (ret && disks[current_drive].flags != -1)
+	ioctl (disks[current_drive].flags, BLKFLSBUF, 0);
+      return ret;
     }
   else
 #endif /* GRUB_UTIL && __linux__ */
@@ -502,8 +513,8 @@ int
 set_partition_hidden_flag (int hidden)
 {
   unsigned long part = 0xFFFFFF;
-  unsigned long start, len, offset, ext_offset;
-  int entry, type;
+  unsigned long start, len, offset, ext_offset, gpt_offset;
+  int entry, type, gpt_count, gpt_size;
   char mbr[512];
   
   /* The drive must be a hard disk.  */
@@ -524,8 +535,16 @@ set_partition_hidden_flag (int hidden)
   /* Look for the partition.  */
   while (next_partition (current_drive, 0xFFFFFF, &part, &type,           
 			 &start, &len, &offset, &entry,
-			 &ext_offset, mbr))
+			 &ext_offset, &gpt_offset, &gpt_count, &gpt_size, mbr))
     {                                                                       
+      /* The partition may not be a GPT partition.  */
+      if (gpt_offset != 0)
+	{
+	  errnum = ERR_BAD_ARGUMENT;
+	  return 1;
+	}
+
+
       if (part == current_partition)
 	{
 	  /* Found.  */
@@ -577,11 +596,14 @@ next_partition (unsigned long drive, unsigned long dest,
 		unsigned long *partition, int *type,
 		unsigned long *start, unsigned long *len,
 		unsigned long *offset, int *entry,
-		unsigned long *ext_offset, char *buf)
+		unsigned long *ext_offset,
+		unsigned long *gpt_offset, int *gpt_count,
+		int *gpt_size, char *buf)
 {
   /* Forward declarations.  */
   auto int next_bsd_partition (void);
   auto int next_pc_slice (void);
+  auto int next_gpt_slice (void);
 
   /* Get next BSD partition in current PC slice.  */
   int next_bsd_partition (void)
@@ -666,6 +688,40 @@ next_partition (unsigned long drive, unsigned long dest,
 	  return 0;
 	}
 
+      /* If this is a GPT partition table, read it as such.  */
+      if (*entry == -1 && *offset == 0 && PC_SLICE_TYPE (buf, 0) == PC_SLICE_TYPE_GPT)
+	{
+	  struct grub_gpt_header *hdr = (struct grub_gpt_header *) buf;
+
+	  /* Read in the GPT Partition table header.  */
+	  if (! rawread (drive, 1, 0, SECTOR_SIZE, buf))
+	    return 0;
+
+	  if (hdr->magic == GPT_HEADER_MAGIC && hdr->version == 0x10000)
+	    {
+	      /* Let gpt_offset point to the first entry in the GPT
+		 partition table.  This can also be used by callers of
+		 next_partition to determine if a entry comes from a
+		 GPT partition table or not.  */
+	      *gpt_offset = hdr->partitions;
+	      *gpt_count = hdr->maxpart;
+	      *gpt_size =  hdr->partentry_size;
+	      
+	      return next_gpt_slice();
+	    }
+	  else
+	    {
+	      /* This is not a valid header for a GPT partition table.
+		 Re-read the MBR or the boot sector of the extended
+		 partition.  */
+	      if (! rawread (drive, *offset, 0, SECTOR_SIZE, buf))
+		return 0;
+	    }
+	}
+
+      /* Not a GPT partition.  */
+      *gpt_offset = 0;
+
       /* Increase the entry number.  */
       (*entry)++;
 
@@ -710,12 +766,52 @@ next_partition (unsigned long drive, unsigned long dest,
       return 1;
     }
 
+  /* Get the next GPT slice.  */
+  int next_gpt_slice (void)
+    {
+      struct grub_gpt_partentry *gptentry = (struct grub_gpt_partentry *) buf;
+      /* Make GPT partitions show up as PC slices.  */
+      int pc_slice_no = (*partition & 0xFF0000) >> 16;
+
+      /* If this is the first time...  */
+      if (pc_slice_no == 0xFF)
+	{
+	  pc_slice_no = -1;
+	  *entry = -1;
+	}
+
+      do {
+	(*entry)++;
+
+	if (*entry >= *gpt_count)
+	  {
+	    errnum = ERR_NO_PART;
+	    return 0;
+	  }
+	/* Read in the GPT Partition table entry.  */
+	if (! rawread (drive, (*gpt_offset) + GPT_ENTRY_SECTOR (*gpt_size, *entry), GPT_ENTRY_INDEX (*gpt_size, *entry), *gpt_size, buf))
+	  return 0;
+      } while (! (gptentry->type1 && gptentry->type2));
+
+      pc_slice_no++;
+      *start = gptentry->start;
+      *len = gptentry->end - gptentry->start + 1;
+      *type = PC_SLICE_TYPE_EXT2FS;
+      *entry = pc_slice_no;
+      *partition = (*entry << 16) | 0xFFFF;
+
+      return 1;
+    }
+
   /* Start the body of this function.  */
   
 #ifndef STAGE1_5
   if (current_drive == NETWORK_DRIVE)
     return 0;
 #endif
+
+  if (*partition != 0xFFFFFF && *gpt_offset != 0)
+    return next_gpt_slice ();
 
   /* If previous partition is a BSD partition or a PC slice which
      contains BSD partitions...  */
@@ -755,6 +851,9 @@ real_open_partition (int flags)
   unsigned long dest_partition = current_partition;
   unsigned long part_offset;
   unsigned long ext_offset;
+  unsigned long gpt_offset;
+  int gpt_count;
+  int gpt_size;
   int entry;
   char buf[SECTOR_SIZE];
   int bsd_part, pc_slice;
@@ -766,7 +865,8 @@ real_open_partition (int flags)
       int ret = next_partition (current_drive, dest_partition,
 				&current_partition, &current_slice,
 				&part_start, &part_length,
-				&part_offset, &entry, &ext_offset, buf);
+				&part_offset, &entry, &ext_offset,
+				&gpt_offset, &gpt_count, &gpt_size, buf);
       bsd_part = (current_partition >> 8) & 0xFF;
       pc_slice = current_partition >> 16;
       return ret;

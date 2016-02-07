@@ -28,6 +28,10 @@
 #include <filesys.h>
 #include <term.h>
 
+#ifdef SUPPORT_GRAPHICS
+# include <graphics.h>
+#endif
+
 #ifdef SUPPORT_NETBOOT
 # define GRUB	1
 # include <etherboot.h>
@@ -47,6 +51,10 @@
 
 #ifdef USE_MD5_PASSWORDS
 # include <md5.h>
+#endif
+
+#ifdef SUPPORT_UUID
+#include <volume_id.h>
 #endif
 
 /* The type of kernel loaded.  */
@@ -75,12 +83,18 @@ int auth = 0;
 int grub_timeout = -1;
 /* Whether to show the menu or not.  */
 int show_menu = 1;
+/* Whether to quiet boot messages or not. */
+int quiet_boot = 1;
 /* The BIOS drive map.  */
 static unsigned short bios_drive_map[DRIVE_MAP_SIZE + 1];
 
 /* Prototypes for allowing straightfoward calling of builtins functions
    inside other functions.  */
 static int configfile_func (char *arg, int flags);
+
+static int savedefault_helper (char *arg, int flags);
+
+static int savedefault_shell (char *arg, int flags);
 
 /* Initialize the data for builtins.  */
 void
@@ -237,17 +251,28 @@ static struct builtin builtin_blocklist =
 static int
 boot_func (char *arg, int flags)
 {
+  struct term_entry *prev_term = current_term;
   /* Clear the int15 handler if we can boot the kernel successfully.
      This assumes that the boot code never fails only if KERNEL_TYPE is
      not KERNEL_TYPE_NONE. Is this assumption is bad?  */
   if (kernel_type != KERNEL_TYPE_NONE)
     unset_int15_handler ();
 
+  /* if our terminal needed initialization, we should shut it down
+   * before booting the kernel, but we want to save what it was so
+   * we can come back if needed */
+  if (current_term->shutdown) 
+    {
+      current_term->shutdown();
+      current_term = term_table; /* assumption: console is first */
+    }
+
 #ifdef SUPPORT_NETBOOT
   /* Shut down the networking.  */
   cleanup_net ();
 #endif
   
+  grub_printf("Starting up ...\n");
   switch (kernel_type)
     {
     case KERNEL_TYPE_FREEBSD:
@@ -306,6 +331,13 @@ boot_func (char *arg, int flags)
       return 1;
     }
 
+  /* if we get back here, we should go back to what our term was before */
+  current_term = prev_term;
+  if (current_term->startup)
+      /* if our terminal fails to initialize, fall back to console since
+       * it should always work */
+      if (current_term->startup() == 0)
+          current_term = term_table; /* we know that console is first */
   return 0;
 }
 
@@ -342,7 +374,8 @@ bootp_func (char *arg, int flags)
     }
 
   /* Notify the configuration.  */
-  print_network_configuration ();
+  if (!quiet_boot)
+    print_network_configuration ();
 
   /* XXX: this can cause an endless loop, but there is no easy way to
      detect such a loop unfortunately.  */
@@ -852,6 +885,251 @@ static struct builtin builtin_dhcp =
 };
 #endif /* SUPPORT_NETBOOT */
 
+#ifdef SUPPORT_GRAPHICS
+
+static int splashimage_func(char *arg, int flags) {
+  int i;
+    
+  /* filename can only be 256 characters due to our buffer size */
+  if (grub_strlen(arg) > 256) {
+    grub_printf("Splash image filename too large\n");
+    grub_printf("Press any key to continue...");
+    getkey();
+    return 1;
+  }
+
+  /* get rid of TERM_NEED_INIT from the graphics terminal. */
+  for (i = 0; term_table[i].name; i++) {
+    if (grub_strcmp (term_table[i].name, "graphics") == 0) {
+      term_table[i].flags &= ~TERM_NEED_INIT;
+      break;
+    }
+  }
+
+  graphics_set_splash(arg);
+
+  if (flags == BUILTIN_CMDLINE && graphics_inited) {
+    graphics_end();
+    if (graphics_init() == 0) {
+      /* Fallback to default term */
+      current_term = term_table;
+      max_lines = current_term->max_lines;
+      if (current_term->cls)
+        current_term->cls();
+      grub_printf("Failed to set splash image and/or graphics mode\n");
+      return 1;
+    }
+    graphics_cls();
+  }
+
+  if (flags == BUILTIN_MENU)
+    current_term = term_table + i;
+
+  return 0;
+}
+
+static struct builtin builtin_splashimage =
+{
+  "splashimage",
+  splashimage_func,
+  BUILTIN_CMDLINE | BUILTIN_MENU | BUILTIN_HELP_LIST,
+  "splashimage FILE",
+  "Load FILE as the background image when in graphics mode."
+};
+
+
+/* shade */
+static int
+shade_func(char *arg, int flags)
+{
+    int new_shade;
+
+    if (!arg || safe_parse_maxint(&arg, &new_shade) == 0)
+       return (1);
+
+    if (shade != new_shade) {
+       shade = new_shade;
+       if (flags == BUILTIN_CMDLINE && graphics_inited) {
+           graphics_end();
+           graphics_init();
+           graphics_cls();
+       }
+    }
+
+    return 0;
+}
+
+static struct builtin builtin_shade =
+{
+  "shade",
+  shade_func,
+  BUILTIN_CMDLINE | BUILTIN_MENU | BUILTIN_HELP_LIST,
+  "shade INTEGER",
+  "If set to 0, disables the use of shaded text, else enables it."
+};
+
+
+/* foreground */
+static int
+foreground_func(char *arg, int flags)
+{
+    if (grub_strlen(arg) == 6) {
+	int r = ((hex(arg[0]) << 4) | hex(arg[1])) >> 2;
+	int g = ((hex(arg[2]) << 4) | hex(arg[3])) >> 2;
+	int b = ((hex(arg[4]) << 4) | hex(arg[5])) >> 2;
+
+	foreground = (r << 16) | (g << 8) | b;
+	if (graphics_inited)
+	    graphics_set_palette(15, r, g, b);
+
+	return 0;
+    }
+
+    return 1;
+}
+
+static struct builtin builtin_foreground =
+{
+  "foreground",
+  foreground_func,
+  BUILTIN_CMDLINE | BUILTIN_MENU | BUILTIN_HELP_LIST,
+  "foreground RRGGBB",
+  "Sets the foreground color when in graphics mode."
+  "RR is red, GG is green, and BB blue. Numbers must be in hexadecimal."
+};
+
+
+/* background */
+static int
+background_func(char *arg, int flags)
+{
+    if (grub_strlen(arg) == 6) {
+	int r = ((hex(arg[0]) << 4) | hex(arg[1])) >> 2;
+	int g = ((hex(arg[2]) << 4) | hex(arg[3])) >> 2;
+	int b = ((hex(arg[4]) << 4) | hex(arg[5])) >> 2;
+
+	background = (r << 16) | (g << 8) | b;
+	if (graphics_inited)
+	    graphics_set_palette(0, r, g, b);
+	return 0;
+    }
+
+    return 1;
+}
+
+static struct builtin builtin_background =
+{
+  "background",
+  background_func,
+  BUILTIN_CMDLINE | BUILTIN_MENU | BUILTIN_HELP_LIST,
+  "background RRGGBB",
+  "Sets the background color when in graphics mode."
+  "RR is red, GG is green, and BB blue. Numbers must be in hexadecimal."
+};
+
+
+/* border */
+static int
+border_func(char *arg, int flags)
+{
+    if (grub_strlen(arg) == 6) {
+       int r = ((hex(arg[0]) << 4) | hex(arg[1])) >> 2;
+       int g = ((hex(arg[2]) << 4) | hex(arg[3])) >> 2;
+       int b = ((hex(arg[4]) << 4) | hex(arg[5])) >> 2;
+
+       window_border = (r << 16) | (g << 8) | b;
+       if (graphics_inited)
+           graphics_set_palette(0x11, r, g, b);
+
+       return 0;
+    }
+
+    return 1;
+}
+
+static struct builtin builtin_border =
+{
+  "border",
+  border_func,
+  BUILTIN_CMDLINE | BUILTIN_MENU | BUILTIN_HELP_LIST,
+  "border RRGGBB",
+  "Sets the border video color when in graphics mode."
+  "RR is red, GG is green, and BB blue. Numbers must be in hexadecimal."
+};
+
+
+/* viewport */
+static int
+viewport_func (char *arg, int flags)
+{
+    int i;
+    int x0 = 0, y0 = 0, x1 = 80, y1 = 30;
+    int *pos[4] = { &x0, &y0, &x1, &y1 };
+
+    if (!arg)
+       return (1);
+    for (i = 0; i < 4; i++) {
+       if (!*arg)
+           return (1);
+    while (*arg && (*arg == ' ' || *arg == '\t'))
+           ++arg;
+       if (!safe_parse_maxint(&arg, pos[i]))
+           return (1);
+       while (*arg && (*arg != ' ' && *arg != '\t'))
+           ++arg;
+    }
+
+    /* minimum size is 65 colums and 16 rows */
+    if (x0 > x1 - 66 || y0 > y1 - 16 || x0 < 0 || y0 < 0 || x1 > 80 || y1 > 30)
+       return 1;
+
+    view_x0 = x0;
+    view_y0 = y0;
+    view_x1 = x1;
+    view_y1 = y1;
+
+    if (flags == BUILTIN_CMDLINE && graphics_inited) {
+       graphics_end();
+       graphics_init();
+       graphics_cls();
+    }
+
+    return 0;
+}
+
+static struct builtin builtin_viewport =
+{
+  "viewport",
+  viewport_func,
+  BUILTIN_CMDLINE | BUILTIN_MENU | BUILTIN_HELP_LIST,
+  "viewport x0 y0 x1 y1",
+  "Changes grub internals to output text in the window defined by"
+  " four parameters. The x and y parameters are 0 based. This option"
+  " only works with the graphics interface."
+};
+
+#endif /* SUPPORT_GRAPHICS */
+
+
+/* clear */
+static int 
+clear_func() 
+{
+  if (current_term->cls)
+    current_term->cls();
+
+  return 0;
+}
+
+static struct builtin builtin_clear =
+{
+  "clear",
+  clear_func,
+  BUILTIN_CMDLINE | BUILTIN_HELP_LIST,
+  "clear",
+  "Clear the screen"
+};
+
 
 /* displayapm */
 static int
@@ -1233,14 +1511,15 @@ find_func (char *arg, int flags)
   for (drive = 0x80; drive < 0x88; drive++)
     {
       unsigned long part = 0xFFFFFF;
-      unsigned long start, len, offset, ext_offset;
-      int type, entry;
+      unsigned long start, len, offset, ext_offset, gpt_offset;
+      int type, entry, gpt_count, gpt_size;
       char buf[SECTOR_SIZE];
 
       current_drive = drive;
       while (next_partition (drive, 0xFFFFFF, &part, &type,
 			     &start, &len, &offset, &entry,
-			     &ext_offset, buf))
+			     &ext_offset, &gpt_offset,
+			     &gpt_count, &gpt_size, buf))
 	{
 	  if (type != PC_SLICE_TYPE_NONE
 	      && ! IS_PC_SLICE_TYPE_BSD (type)
@@ -1454,14 +1733,20 @@ static struct builtin builtin_halt =
 
 
 /* help */
-#define MAX_SHORT_DOC_LEN	39
-#define MAX_LONG_DOC_LEN	66
-
 static int
 help_func (char *arg, int flags)
 {
-  int all = 0;
-  
+  int all = 0, max_short_doc_len, max_long_doc_len;
+  max_short_doc_len = 39;
+  max_long_doc_len = 66;
+#ifdef SUPPORT_GRAPHICS
+  if (grub_memcmp (current_term->name, "graphics", sizeof ("graphics") - 1) == 0)
+    {
+      max_short_doc_len = (view_x1 - view_x0 + 1) / 2 - 1;
+      max_long_doc_len = (view_x1 - view_x0) - 14;
+    }
+#endif
+
   if (grub_memcmp (arg, "--all", sizeof ("--all") - 1) == 0)
     {
       all = 1;
@@ -1491,13 +1776,13 @@ help_func (char *arg, int flags)
 
 	  len = grub_strlen ((*builtin)->short_doc);
 	  /* If the length of SHORT_DOC is too long, truncate it.  */
-	  if (len > MAX_SHORT_DOC_LEN - 1)
-	    len = MAX_SHORT_DOC_LEN - 1;
+	  if (len > max_short_doc_len - 1)
+	    len = max_short_doc_len - 1;
 
 	  for (i = 0; i < len; i++)
 	    grub_putchar ((*builtin)->short_doc[i]);
 
-	  for (; i < MAX_SHORT_DOC_LEN; i++)
+	  for (; i < max_short_doc_len; i++)
 	    grub_putchar (' ');
 
 	  if (! left)
@@ -1546,10 +1831,10 @@ help_func (char *arg, int flags)
 		      int i;
 
 		      /* If LEN is too long, fold DOC.  */
-		      if (len > MAX_LONG_DOC_LEN)
+		      if (len > max_long_doc_len)
 			{
 			  /* Fold this line at the position of a space.  */
-			  for (len = MAX_LONG_DOC_LEN; len > 0; len--)
+			  for (len = max_long_doc_len; len > 0; len--)
 			    if (doc[len - 1] == ' ')
 			      break;
 			}
@@ -1598,6 +1883,23 @@ static struct builtin builtin_hiddenmenu =
   "hiddenmenu",
   "Hide the menu."
 #endif
+};
+
+/* quietboot */
+static int
+quietboot_func (char *arg, int flags)
+{
+  quiet_boot = 1;
+  return 0;
+}
+
+static struct builtin builtin_quietboot =
+{
+  "quiet",
+  quietboot_func,
+  BUILTIN_CMDLINE | BUILTIN_HELP_LIST,
+  "quietboot",
+  "Quiet boot messages."
 };
 
 
@@ -1663,8 +1965,8 @@ ifconfig_func (char *arg, int flags)
       errnum = ERR_BAD_ARGUMENT;
       return 1;
     }
-  
-  print_network_configuration ();
+  if (!quiet_boot)
+    print_network_configuration ();
   return 0;
 }
 
@@ -2323,6 +2625,25 @@ static struct builtin builtin_ioprobe =
   "Probe I/O ports used for the drive DRIVE."
 };
 
+/* print */
+static int
+print_func (char *arg, int flags)
+{
+  printf("%s\n", arg);
+
+  return 0;
+}
+
+static struct builtin builtin_print =
+{
+  "print",
+  print_func,
+  BUILTIN_CMDLINE | BUILTIN_MENU | BUILTIN_NO_ECHO,
+  "print [MESSAGE ...]",
+  "Print MESSAGE."
+};
+
+
 
 /* kernel */
 static int
@@ -2815,8 +3136,8 @@ parttype_func (char *arg, int flags)
 {
   int new_type;
   unsigned long part = 0xFFFFFF;
-  unsigned long start, len, offset, ext_offset;
-  int entry, type;
+  unsigned long start, len, offset, ext_offset, gpt_offset;
+  int entry, type, gpt_count, gpt_size;
   char mbr[512];
 
   /* Get the drive and the partition.  */
@@ -2853,8 +3174,15 @@ parttype_func (char *arg, int flags)
   /* Look for the partition.  */
   while (next_partition (current_drive, 0xFFFFFF, &part, &type,
 			 &start, &len, &offset, &entry,
-			 &ext_offset, mbr))
+			 &ext_offset, &gpt_offset, &gpt_count, &gpt_size, mbr))
     {
+      /* The partition may not be a GPT partition.  */
+      if (gpt_offset != 0)
+	{
+	  errnum = ERR_BAD_ARGUMENT;
+	  return 1;
+	}
+
       if (part == current_partition)
 	{
 	  /* Found.  */
@@ -3019,7 +3347,8 @@ rarp_func (char *arg, int flags)
     }
 
   /* Notify the configuration.  */
-  print_network_configuration ();
+  if (!quiet_boot)
+    print_network_configuration ();
   return 0;
 }
 
@@ -3109,7 +3438,8 @@ print_root_device (void)
   /* Print the filesystem information.  */
   current_partition = saved_partition;
   current_drive = saved_drive;
-  print_fsys_type ();
+  if (!quiet_boot)
+    print_fsys_type ();
 }
 
 static int
@@ -3120,10 +3450,13 @@ real_root_func (char *arg, int attempt_mount)
   char *next;
 
   /* If ARG is empty, just print the current root device.  */
-  if (! *arg)
+  if (!quiet_boot)
     {
-      print_root_device ();
-      return 0;
+  	if (! *arg)
+    	  {
+     	    print_root_device ();
+      	    return 0;
+    	  }
     }
   
   /* Call set_device to get the drive and the partition in ARG.  */
@@ -3165,7 +3498,8 @@ real_root_func (char *arg, int attempt_mount)
 	return 1;
       
       /* Print the type of the filesystem.  */
-      print_fsys_type ();
+      if (!quiet_boot)
+        print_fsys_type ();
     }
   
   return 0;
@@ -3221,7 +3555,109 @@ static struct builtin builtin_rootnoverify =
 static int
 savedefault_func (char *arg, int flags)
 {
-#if !defined(SUPPORT_DISKLESS) && !defined(GRUB_UTIL)
+#if !defined(SUPPORT_DISKLESS)
+  #if !defined(GRUB_UTIL)
+	return savedefault_helper(arg, flags);
+  #else
+	return savedefault_shell(arg, flags);
+  #endif
+#else /* !SUPPORT_DISKLESS */ 
+  errnum = ERR_UNRECOGNIZED;
+  return 1;
+#endif /* !SUPPORT_DISKLESS */
+}
+
+#if !defined(SUPPORT_DISKLESS) && defined(GRUB_UTIL)
+/* savedefault_shell */
+static int
+savedefault_shell(char *arg, int flags)
+ {
+  int once_only = 0;
+  int new_default;
+  int curr_default = -1;
+  int curr_prev_default = -1;
+  int new_prev_default = -1;
+  FILE *fp;
+  size_t bytes = 10;
+  char line[bytes];
+  char *default_file = (char *) DEFAULT_FILE_BUF;
+  char buf[bytes];
+  int i;
+  
+  while (1)
+    {
+      if (grub_memcmp ("--default=", arg, sizeof ("--default=") - 1) == 0)
+        {
+          char *p = arg + sizeof ("--default=") - 1;
+          if (! safe_parse_maxint (&p, &new_default))
+            return 1;
+          arg = skip_to (0, arg);
+        }
+      else if (grub_memcmp ("--once", arg, sizeof ("--once") - 1) == 0)
+        {
+         once_only = 1;
+         arg = skip_to (0, arg);
+	}
+      else
+        break;
+    }
+
+  *default_file = 0;
+  grub_strncat (default_file, config_file, DEFAULT_FILE_BUFLEN);
+  for (i = grub_strlen(default_file); i >= 0; i--)
+    if (default_file[i] == '/')
+    {
+      i++;
+      break;
+    }
+  default_file[i] = 0;
+  grub_strncat (default_file + i, "default", DEFAULT_FILE_BUFLEN - i);
+
+  if(!(fp = fopen(default_file,"r")))
+    {
+      errnum = ERR_READ;
+      goto fail;
+    }
+  
+  fgets(line, bytes, fp);
+  fclose(fp);
+ 
+  sscanf(line, "%d:%d", &curr_prev_default, &curr_default);
+     
+  if(curr_default != -1)
+    new_prev_default = curr_default;
+  else
+    {
+      if(curr_prev_default != -1)
+        new_prev_default = curr_prev_default;
+      else
+        new_prev_default = 0;
+    }
+     
+  if(once_only)
+    sprintf(buf, "%d:%d", new_prev_default, new_default);
+  else
+    sprintf(buf, "%d", new_default);
+
+  if(!(fp = fopen(default_file,"w")))
+    {
+      errnum = ERR_READ;
+      goto fail;
+    }
+     
+  fprintf(fp, buf);   
+     
+fail:
+  fclose(fp);
+  return errnum;
+}
+#endif
+
+/* savedefault_helper */
+static int
+savedefault_helper (char *arg, int flags)
+{
+#if !defined(SUPPORT_DISKLESS)
   unsigned long tmp_drive = saved_drive;
   unsigned long tmp_partition = saved_partition;
   char *default_file = (char *) DEFAULT_FILE_BUF;
@@ -3297,22 +3733,26 @@ savedefault_func (char *arg, int flags)
       
       disk_read_hook = disk_read_savesect_func;
       len = grub_read (buf, sizeof (buf));
+      buf[9]='\0';/* Make sure grub_strstr() below terminates */
       disk_read_hook = 0;
       grub_close ();
       
-      if (len != sizeof (buf))
-	{
-	  /* This is too small. Do not modify the file manually, please!  */
-	  errnum = ERR_READ;
-	  goto fail;
-	}
-
       if (sector_count > 2)
 	{
 	  /* Is this possible?! Too fragmented!  */
 	  errnum = ERR_FSYS_CORRUPT;
 	  goto fail;
 	}
+
+      char *tmp;
+      if((tmp = grub_strstr(buf, ":")) != NULL)
+      {
+       int f_len = grub_strlen(buf) - grub_strlen(tmp);
+       char *def;
+       buf[f_len] = '\0';
+       def = buf;
+       safe_parse_maxint (&def, &entryno);
+      }
       
       /* Set up a string to be written.  */
       grub_memset (buf, '\n', sizeof (buf));
@@ -3830,15 +4270,15 @@ setup_func (char *arg, int flags)
 	{
 	  char tmp[16];
 	  grub_sprintf (tmp, ",%d", (partition >> 16) & 0xFF);
-	  grub_strncat (device, tmp, 256);
+	  grub_strncat (device, tmp, sizeof (device));
 	}
       if ((partition & 0x00FF00) != 0x00FF00)
 	{
 	  char tmp[16];
 	  grub_sprintf (tmp, ",%c", 'a' + ((partition >> 8) & 0xFF));
-	  grub_strncat (device, tmp, 256);
+	  grub_strncat (device, tmp, sizeof (device));
 	}
-      grub_strncat (device, ")", 256);
+      grub_strncat (device, ")", sizeof (device));
     }
   
   int embed_stage1_5 (char *stage1_5, int drive, int partition)
@@ -4085,7 +4525,7 @@ static struct builtin builtin_setup =
 };
 
 
-#if defined(SUPPORT_SERIAL) || defined(SUPPORT_HERCULES)
+#if defined(SUPPORT_SERIAL) || defined(SUPPORT_HERCULES) || defined(SUPPORT_GRAPHICS)
 /* terminal */
 static int
 terminal_func (char *arg, int flags)
@@ -4244,17 +4684,29 @@ terminal_func (char *arg, int flags)
  end:
   current_term = term_table + default_term;
   current_term->flags = term_flags;
-  
+
   if (lines)
     max_lines = lines;
   else
-    /* 24 would be a good default value.  */
-    max_lines = 24;
-  
+    max_lines = current_term->max_lines;
+
   /* If the interface is currently the command-line,
      restart it to repaint the screen.  */
-  if (current_term != prev_term && (flags & BUILTIN_CMDLINE))
+  if ((current_term != prev_term) && (flags & BUILTIN_CMDLINE)){
+    if (prev_term->shutdown)
+      prev_term->shutdown();
+    if (current_term->startup) {
+      /* If startup fails, return to previous term */
+      if (current_term->startup() == 0) {
+        current_term = prev_term;
+        max_lines = current_term->max_lines;
+        if (current_term->cls) {
+          current_term->cls();
+        }
+      }
+    }
     grub_longjmp (restart_cmdline_env, 0);
+  }
   
   return 0;
 }
@@ -4264,7 +4716,7 @@ static struct builtin builtin_terminal =
   "terminal",
   terminal_func,
   BUILTIN_MENU | BUILTIN_CMDLINE | BUILTIN_HELP_LIST,
-  "terminal [--dumb] [--no-echo] [--no-edit] [--timeout=SECS] [--lines=LINES] [--silent] [console] [serial] [hercules]",
+  "terminal [--dumb] [--no-echo] [--no-edit] [--timeout=SECS] [--lines=LINES] [--silent] [console] [serial] [hercules] [graphics]",
   "Select a terminal. When multiple terminals are specified, wait until"
   " you push any key to continue. If both console and serial are specified,"
   " the terminal to which you input a key first will be selected. If no"
@@ -4276,7 +4728,7 @@ static struct builtin builtin_terminal =
   " seconds. The option --lines specifies the maximum number of lines."
   " The option --silent is used to suppress messages."
 };
-#endif /* SUPPORT_SERIAL || SUPPORT_HERCULES */
+#endif /* SUPPORT_SERIAL || SUPPORT_HERCULES || SUPPORT_GRAPHICS */
 
 
 #ifdef SUPPORT_SERIAL
@@ -4578,8 +5030,8 @@ tftpserver_func (char *arg, int flags)
       errnum = ERR_BAD_ARGUMENT;
       return 1;
     }
-
-  print_network_configuration ();
+  if (!quiet_boot)
+    print_network_configuration ();
   return 0;
 }
 
@@ -4790,18 +5242,187 @@ static struct builtin builtin_vbeprobe =
   "Probe VBE information. If the mode number MODE is specified, show only"
   " the information about only the mode."
 };
+
+
+
+#ifdef SUPPORT_UUID
+
+struct uuid_callback_data
+{
+   int  found;	/* 1 if uuid matches */
+   char *uuid;  /* uuid to look for */
+};
+
+static void uuid_info_print(struct volume_id *id, const char *uuid)
+{
+  const char *type;
+  int i;
+
+  volume_id_get_type(id, &type);
+  grub_printf("(hd%d", current_drive - 0x80);
+  if ((current_partition & 0xFF0000) != 0xFF0000)
+    {
+      grub_printf (",%d", (current_partition >> 16) & 0xFF);
+    }
+  if ((current_partition & 0x00FF00) != 0x00FF00)
+    {
+      grub_printf (",%c", 'a' + ((current_partition >> 8) & 0xFF));
+    }
+  grub_printf(") %s",type);
+  for (i=0;i<6-strlen(type);i++)
+    {
+      grub_putchar(' ');
+    }
+  grub_printf(" %s\n",uuid);
+}
+
+static int uuid_all_probers(volume_id_probe_fn_t probe_fn,
+                            struct volume_id *id, 
+			    uint64_t off, 
+			    uint64_t size, 
+			    void *data)
+{
+  struct uuid_callback_data *uc_data = (struct uuid_callback_data*)data;
+
+  if (probe_fn(id, off, size) == 0)
+    {
+      const char *volume_uuid;
+      if (volume_id_get_uuid(id, &volume_uuid)) 
+        {
+          if (!*(uc_data->uuid))
+            { 
+              uuid_info_print(id, volume_uuid);
+            }
+          else
+           {
+              if (strcmp(volume_uuid, uc_data->uuid) == 0) 
+                {
+                  grub_printf("Boot from ");
+                  uuid_info_print(id, volume_uuid);
+                  uc_data->found = 1;
+                  return 1;
+                }
+            }
+        }
+    }
+  return 0;
+}
+
+/* uuid find */
+/* Search for the uuid arg in all of partitions.  */
+static int
+uuid_func(char *arg, int flag)
+{
+  unsigned long drive;
+  unsigned long tmp_drive = saved_drive;
+  unsigned long tmp_partition = saved_partition;
+  struct uuid_callback_data uc_data;
+
+  uc_data.uuid = arg;
+  uc_data.found = 0;
+
+  /* Just hard disks and USB drives supported by BIOS  */
+  for (drive = 0x80; drive < 0x88; drive++)
+    {
+      unsigned long part = 0xFFFFFF;
+      unsigned long start, len, offset, ext_offset, gpt_offset;
+      int type, entry, gpt_count, gpt_size;
+      char *buf = (char *) RAW_ADDR(0x100000);
+      struct volume_id *vol_id = (struct volume_id *) RAW_ADDR (0x100000 + SECTOR_SIZE);
+
+      current_drive = drive;
+      while (next_partition (drive, 0xFFFFFF, &part, &type,
+			     &start, &len, &offset, &entry,
+			     &ext_offset, &gpt_offset,
+			     &gpt_count, &gpt_size, buf))
+	{
+	  if (type != PC_SLICE_TYPE_NONE
+	      && ! IS_PC_SLICE_TYPE_BSD (type)
+	      && ! IS_PC_SLICE_TYPE_EXTENDED (type))
+	    {
+	      current_partition = part;
+              errnum = ERR_NONE;
+              /* Attempt to open device, conventional way */
+              if (! open_device ())
+                {
+                  errnum = ERR_NONE;
+                  /* Failed, like NTFS or FAT filesystems, so try the rootnoverify way */
+                  if (open_partition ())
+                    {
+                      set_bootdev (0);
+                      if (errnum)
+                        {
+                          /* Give up */
+                          errnum = ERR_NONE;
+                          continue;
+                        }
+                    }
+                }
+
+              /* And probe for uuid across all fs types */
+              saved_drive = current_drive;
+              saved_partition = current_partition;
+		
+              grub_memset(vol_id, 0, sizeof(struct volume_id) );
+              volume_id_all_probers(uuid_all_probers, vol_id, 0, len, (void*)&uc_data);
+              if (uc_data.found)
+                {
+                  /* Success! */
+                  errnum = ERR_NONE;
+                  return 0;
+                }
+	    }
+	  /* We want to ignore any error here.  */
+	  errnum = ERR_NONE;
+	}
+
+      /* next_partition always sets ERRNUM in the last call, so clear it.  */
+      errnum = ERR_NONE;
+    }
+
+  saved_drive = tmp_drive;
+  saved_partition = tmp_partition;
+  current_drive = GRUB_INVALID_DRIVE;
+  current_partition = 0xFFFFFF;
+  errnum = ERR_FILE_NOT_FOUND;
+
+  if (!*arg) 
+    {
+      errnum = ERR_NONE;
+      return 0;
+    }
+  return 1;
+}
+
+static struct builtin builtin_uuid =
+{
+  "uuid",
+  uuid_func,
+  BUILTIN_CMDLINE | BUILTIN_HELP_LIST,
+  "uuid UUID",
+  "Set the current \"root device\" to the device with the uuid UUID,"
+  " then attempt to mount it"
+};
+#endif
   
 
 /* The table of builtin commands. Sorted in dictionary order.  */
 struct builtin *builtin_table[] =
 {
+#ifdef SUPPORT_GRAPHICS
+  &builtin_background,
+#endif
   &builtin_blocklist,
   &builtin_boot,
 #ifdef SUPPORT_NETBOOT
   &builtin_bootp,
 #endif /* SUPPORT_NETBOOT */
+#ifdef SUPPORT_GRAPHICS
+  &builtin_border,
+#endif
   &builtin_cat,
   &builtin_chainloader,
+  &builtin_clear,
   &builtin_cmp,
   &builtin_color,
   &builtin_configfile,
@@ -4821,6 +5442,9 @@ struct builtin *builtin_table[] =
   &builtin_embed,
   &builtin_fallback,
   &builtin_find,
+#ifdef SUPPORT_GRAPHICS
+  &builtin_foreground,
+#endif
   &builtin_fstest,
   &builtin_geometry,
   &builtin_halt,
@@ -4848,9 +5472,11 @@ struct builtin *builtin_table[] =
   &builtin_parttype,
   &builtin_password,
   &builtin_pause,
+  &builtin_print,
 #ifdef GRUB_UTIL
   &builtin_quit,
 #endif /* GRUB_UTIL */
+  &builtin_quietboot,
 #ifdef SUPPORT_NETBOOT
   &builtin_rarp,
 #endif /* SUPPORT_NETBOOT */
@@ -4864,9 +5490,13 @@ struct builtin *builtin_table[] =
 #endif /* SUPPORT_SERIAL */
   &builtin_setkey,
   &builtin_setup,
-#if defined(SUPPORT_SERIAL) || defined(SUPPORT_HERCULES)
+#ifdef SUPPORT_GRAPHICS
+  &builtin_shade,
+  &builtin_splashimage,
+#endif /* SUPPORT_GRAPHICS */
+#if defined(SUPPORT_SERIAL) || defined(SUPPORT_HERCULES) || defined(SUPPORT_GRAPHICS)
   &builtin_terminal,
-#endif /* SUPPORT_SERIAL || SUPPORT_HERCULES */
+#endif /* SUPPORT_SERIAL || SUPPORT_HERCULES || SUPPORT_GRAPHICS */
 #ifdef SUPPORT_SERIAL
   &builtin_terminfo,
 #endif /* SUPPORT_SERIAL */
@@ -4879,6 +5509,12 @@ struct builtin *builtin_table[] =
   &builtin_title,
   &builtin_unhide,
   &builtin_uppermem,
+#ifdef SUPPORT_UUID
+  &builtin_uuid,
+#endif
   &builtin_vbeprobe,
+#ifdef SUPPORT_GRAPHICS
+  &builtin_viewport,
+#endif
   0
 };

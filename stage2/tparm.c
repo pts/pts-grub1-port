@@ -49,6 +49,8 @@
 
 #include "tparm.h"
 
+#include <stdarg.h>
+
 /*
  * Common/troublesome character definitions
  */
@@ -319,8 +321,8 @@ parse_format(const char *s, char *format, int *len)
 #define isUPPER(c) ((c) >= 'A' && (c) <= 'Z')
 #define isLOWER(c) ((c) >= 'a' && (c) <= 'z')
 
-static inline char *
-tparam_internal(const char *string, int *dataptr)
+char *
+grub_tparm(const char *string,...)
 {
 #define NUM_VARS 26
     char *p_is_s[9];
@@ -339,6 +341,7 @@ tparam_internal(const char *string, int *dataptr)
     static char format[MAX_FORMAT_LEN];
     static int dynamic_var[NUM_VARS];
     static int static_vars[NUM_VARS];
+    va_list dataptr;
 
     out_used = 0;
     if (string == NULL)
@@ -454,6 +457,7 @@ tparam_internal(const char *string, int *dataptr)
 
     if (number > 9)
 	number = 9;
+    va_start(dataptr, string);
     for (i = 0; i < max(popcount, number); i++) {
 	/*
 	 * A few caps (such as plab_norm) have string-valued parms.
@@ -461,11 +465,12 @@ tparam_internal(const char *string, int *dataptr)
 	 * a char* and an int may not be the same size on the stack.
 	 */
 	if (p_is_s[i] != 0) {
-	  p_is_s[i] = (char *)(*(dataptr++));
+	  p_is_s[i] = va_arg(dataptr, char *);
 	} else {
-	  param[i] = (int)(*(dataptr++));
+	  param[i] = va_arg(dataptr, int);
 	}
     }
+    va_end(dataptr);
 
     /*
      * This is a termcap compatibility hack.  If there are no explicit pop
@@ -712,15 +717,3 @@ tparam_internal(const char *string, int *dataptr)
     return (out_buff);
 }
 
-char *
-grub_tparm(const char *string,...)
-{
-    char *result;
-    int *dataptr = (int *) &string;
-
-    dataptr++;
-
-    result = tparam_internal(string, dataptr);
-
-    return result;
-}

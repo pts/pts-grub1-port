@@ -108,26 +108,43 @@ mmap_avail_at (unsigned long bottom)
   unsigned long long top;
   unsigned long addr;
   int cont;
-  
+
   top = bottom;
-  do
-    {
-      for (cont = 0, addr = mbi.mmap_addr;
-	   addr < mbi.mmap_addr + mbi.mmap_length;
-	   addr += *((unsigned long *) addr) + 4)
-	{
-	  struct AddrRangeDesc *desc = (struct AddrRangeDesc *) addr;
-	  
-	  if (desc->Type == MB_ARD_MEMORY
-	      && desc->BaseAddr <= top
-	      && desc->BaseAddr + desc->Length > top)
-	    {
-	      top = desc->BaseAddr + desc->Length;
-	      cont++;
-	    }
+    /* If detecting mbi.mem_lower */
+    if (bottom == 0) {
+	/* Initialize to 640Kb */
+	top = 0xA0000ULL;
+	for (addr = mbi.mmap_addr;
+	     addr < mbi.mmap_addr + mbi.mmap_length;
+	     addr += *((unsigned long *) addr) + 4) {
+	    struct AddrRangeDesc *desc = (struct AddrRangeDesc *) addr;
+
+	    /* If there is anything reserved below 640Kb */
+	    if (desc->BaseAddr < top && desc->Length &&
+		desc->Type != MB_ARD_MEMORY)
+		top = desc->BaseAddr;
 	}
     }
-  while (cont);
+    else {
+      do
+	{
+	  for (cont = 0, addr = mbi.mmap_addr;
+	       addr < mbi.mmap_addr + mbi.mmap_length;
+	       addr += *((unsigned long *) addr) + 4)
+	    {
+	      struct AddrRangeDesc *desc = (struct AddrRangeDesc *) addr;
+	  
+	      if (desc->Type == MB_ARD_MEMORY
+		  && desc->BaseAddr <= top
+		  && desc->BaseAddr + desc->Length > top)
+		{
+		  top = desc->BaseAddr + desc->Length;
+		  cont++;
+		}
+	    }
+	}
+      while (cont);
+    }
 
   /* For now, GRUB assumes 32bits addresses, so...  */
   if (top > 0xFFFFFFFF)
@@ -194,6 +211,7 @@ init_bios_info (void)
   if (mbi.mmap_length)
     {
       unsigned long long max_addr;
+      unsigned long mem_lower = mmap_avail_at (0) >> 10;
       
       /*
        *  This is to get the lower memory, and upper memory (up to the
@@ -201,7 +219,8 @@ init_bios_info (void)
        *  elements.  This is for OS's that don't care about the memory
        *  map, but might care about total RAM available.
        */
-      mbi.mem_lower = mmap_avail_at (0) >> 10;
+      if (mem_lower < mbi.mem_lower)
+	mbi.mem_lower = mem_lower;
       mbi.mem_upper = mmap_avail_at (0x100000) >> 10;
 
       /* Find the maximum available address. Ignore any memory holes.  */

@@ -50,10 +50,11 @@ skip_to (int after_equal, char *cmdline)
 void
 print_cmdline_message (int forever)
 {
-  printf (" [ Minimal BASH-like line editing is supported.  For the first word, TAB\n"
-	  "   lists possible command completions.  Anywhere else TAB lists the possible\n"
-	  "   completions of a device/filename.%s ]\n",
-	  (forever ? "" : "  ESC at any time exits."));
+  grub_printf("       [ Minimal BASH-like line editing is supported.   For\n"
+              "         the   first   word,  TAB  lists  possible  command\n"
+              "         completions.  Anywhere else TAB lists the possible\n"
+              "         completions of a device/filename.%s ]\n",
+              (forever ? "" : "  ESC at any time\n         exits."));
 }
 
 /* Find the builtin whose command name is COMMAND and return the
@@ -229,16 +230,22 @@ run_script (char *script, char *heap)
 	}
 
       /* Find a builtin.  */
+      
       builtin = find_command (heap);
       if (! builtin)
 	{
+	 if(!quiet_boot)
+	 {
 	  grub_printf ("%s\n", old_entry);
 	  continue;
+	 }
 	}
 
       if (! (builtin->flags & BUILTIN_NO_ECHO))
-	grub_printf ("%s\n", old_entry);
-
+	{
+	      if (!quiet_boot)
+		  grub_printf ("%s\n", old_entry);
+	}
       /* If BUILTIN cannot be run in the command-line, skip it.  */
       if (! (builtin->flags & BUILTIN_CMDLINE))
 	{

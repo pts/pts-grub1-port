@@ -499,7 +499,11 @@ struct vbe_mode
   unsigned char linear_reserved_field_position;
   unsigned long max_pixel_clock;
 
-  unsigned char reserved3[189];
+  /* Reserved field to make structure to be 256 bytes long, VESA BIOS 
+     Extension 3.0 Specification says to reserve 189 bytes here but 
+     that doesn't make structure to be 256 bytes.  So additional one is 
+     added here.  */
+  unsigned char reserved3[189 + 1];
 } __attribute__ ((packed));
 
 
@@ -792,6 +796,11 @@ int getxy (void);
 /* Set the cursor position. */
 void gotoxy (int x, int y);
 
+/* Internal pager
+   Returns 1 = if pager was used
+           0 = if pager wasn't used  */
+int do_more (void);
+
 /* Displays an ASCII character.  IBM displays will translate some
    characters to special graphical ones (see the DISP_* constants). */
 void grub_putchar (int c);
@@ -854,6 +863,7 @@ kernel_t;
 
 extern kernel_t kernel_type;
 extern int show_menu;
+extern int quiet_boot;
 extern int grub_timeout;
 
 void init_builtins (void);
@@ -871,6 +881,7 @@ int grub_sprintf (char *buffer, const char *format, ...);
 int grub_tolower (int c);
 int grub_isspace (int c);
 int grub_strncat (char *s1, const char *s2, int n);
+void grub_memcpy(void *dest, const void *src, int len);
 void *grub_memmove (void *to, const void *from, int len);
 void *grub_memset (void *start, int c, int len);
 int grub_strncat (char *s1, const char *s2, int n);
@@ -904,14 +915,14 @@ extern grub_jmp_buf restart_cmdline_env;
 /* misc */
 void init_page (void);
 void print_error (void);
-char *convert_to_ascii (char *buf, int c, ...);
+char *convert_to_ascii (char *buf, int c, unsigned long num);
 int get_cmdline (char *prompt, char *cmdline, int maxlen,
 		 int echo_char, int history);
 int substring (const char *s1, const char *s2);
 int nul_terminate (char *str);
 int get_based_digit (int c, int base);
 int safe_parse_maxint (char **str_ptr, int *myint_ptr);
-int memcheck (int start, int len);
+int memcheck (unsigned long int start, unsigned long int len);
 void grub_putstr (const char *str);
 
 #ifndef NO_DECOMPRESSION
@@ -934,7 +945,9 @@ int next_partition (unsigned long drive, unsigned long dest,
 		    unsigned long *partition, int *type,
 		    unsigned long *start, unsigned long *len,
 		    unsigned long *offset, int *entry,
-		    unsigned long *ext_offset, char *buf);
+		    unsigned long *ext_offset,
+		    unsigned long *gpt_offset, int *gpt_count,
+		    int *gpt_size, char *buf);
 
 /* Sets device to the one represented by the SAVED_* parameters. */
 int make_saved_active (void);
