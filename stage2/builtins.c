@@ -157,6 +157,8 @@ blocklist_func (char *arg, int flags)
   int num_entries = 0;
   int last_length = 0;
 
+  (void)flags;
+
   auto void disk_read_blocklist_func (int sector, int offset, int length);
   
   /* Collect contiguous blocks into one entry as many as possible,
@@ -257,6 +259,8 @@ boot_func (char *arg, int flags)
   /* Clear the int15 handler if we can boot the kernel successfully.
      This assumes that the boot code never fails only if KERNEL_TYPE is
      not KERNEL_TYPE_NONE. Is this assumption is bad?  */
+  (void)arg; (void)flags;
+
   if (kernel_type != KERNEL_TYPE_NONE)
     unset_int15_handler ();
 
@@ -405,6 +409,7 @@ static int
 cat_func (char *arg, int flags)
 {
   char c;
+  (void)flags;
 
   if (! grub_open (arg))
     return 1;
@@ -439,6 +444,7 @@ chainloader_func (char *arg, int flags)
 {
   int force = 0;
   char *file = arg;
+  (void)flags;
 
   /* If the option `--force' is specified?  */
   if (substring ("--force", arg) <= 0)
@@ -521,6 +527,7 @@ cmp_func (char *arg, int flags)
   int i;
   /* The size of the file.  */
   int size;
+  (void)flags;
 
   /* Get the filenames from ARG.  */
   file1 = arg;
@@ -625,6 +632,7 @@ color_func (char *arg, int flags)
     "yellow",
     "white"
   };
+  (void)flags;
 
   auto int color_number (char *str);
   
@@ -732,6 +740,7 @@ static int
 configfile_func (char *arg, int flags)
 {
   char *new_config = config_file;
+  (void)flags;
 
   /* Check if the file ARG is present.  */
   if (! grub_open (arg))
@@ -772,6 +781,8 @@ static struct builtin builtin_configfile =
 static int
 debug_func (char *arg, int flags)
 {
+  (void)arg; (void)flags;
+
   if (debug)
     {
       debug = 0;
@@ -800,6 +811,7 @@ static struct builtin builtin_debug =
 static int
 default_func (char *arg, int flags)
 {
+  (void)flags;
 #ifndef SUPPORT_DISKLESS
   if (grub_strcmp (arg, "saved") == 0)
     {
@@ -1137,6 +1149,8 @@ static struct builtin builtin_clear =
 static int
 displayapm_func (char *arg, int flags)
 {
+  (void)arg; (void)flags;
+
   if (mbi.flags & MB_INFO_APM_TABLE)
     {
       grub_printf ("APM BIOS information:\n"
@@ -1179,6 +1193,8 @@ static struct builtin builtin_displayapm =
 static int
 displaymem_func (char *arg, int flags)
 {
+  (void)arg; (void)flags;
+
   if (get_eisamemsize () != -1)
     grub_printf (" EISA Memory BIOS Interface is present\n");
   if (get_mmap_entry ((void *) SCRATCHADDR, 0) != 0
@@ -1302,6 +1318,7 @@ embed_func (char *arg, int flags)
   char *stage1_5_buffer = (char *) RAW_ADDR (0x100000);
   int len, size;
   int sector;
+  (void)flags;
   
   stage1_5 = arg;
   device = skip_to (0, stage1_5);
@@ -1430,6 +1447,7 @@ static int
 fallback_func (char *arg, int flags)
 {
   int i = 0;
+  (void)flags;
 
   while (*arg)
     {
@@ -1487,6 +1505,7 @@ find_func (char *arg, int flags)
   unsigned long tmp_drive = saved_drive;
   unsigned long tmp_partition = saved_partition;
   int got_file = 0;
+  (void)flags;
   
   /* Floppies.  */
   for (drive = 0; drive < 8; drive++)
@@ -1588,6 +1607,8 @@ static struct builtin builtin_find =
 static int
 fstest_func (char *arg, int flags)
 {
+  (void)arg; (void)flags;
+
   if (disk_read_hook)
     {
       disk_read_hook = NULL;
@@ -1622,6 +1643,7 @@ geometry_func (char *arg, int flags)
 #ifdef GRUB_UTIL
   char *ptr;
 #endif
+  (void)flags;
 
   /* Get the device number.  */
   set_device (device);
@@ -1715,6 +1737,7 @@ static int
 halt_func (char *arg, int flags)
 {
   int no_apm;
+  (void)flags;
 
   no_apm = (grub_memcmp (arg, "--no-apm", 8) == 0);
   grub_halt (no_apm);
@@ -1739,6 +1762,8 @@ static int
 help_func (char *arg, int flags)
 {
   int all = 0, max_short_doc_len, max_long_doc_len;
+  (void)flags;
+
   max_short_doc_len = 39;
   max_long_doc_len = 66;
 #ifdef SUPPORT_GRAPHICS
@@ -1872,6 +1897,8 @@ static struct builtin builtin_help =
 static int
 hiddenmenu_func (char *arg, int flags)
 {
+  (void)arg; (void)flags;
+
   show_menu = 0;
   return 0;
 }
@@ -1891,6 +1918,8 @@ static struct builtin builtin_hiddenmenu =
 static int
 quietboot_func (char *arg, int flags)
 {
+  (void)arg; (void)flags;
+
   quiet_boot = 1;
   return 0;
 }
@@ -1909,6 +1938,8 @@ static struct builtin builtin_quietboot =
 static int
 hide_func (char *arg, int flags)
 {
+  (void)arg; (void)flags;
+
   if (! set_device (arg))
     return 1;
 
@@ -1988,6 +2019,8 @@ static struct builtin builtin_ifconfig =
 static int
 impsprobe_func (char *arg, int flags)
 {
+  (void)arg; (void)flags;
+
 #ifdef GRUB_UTIL
   /* In the grub shell, we cannot probe IMPS.  */
   errnum = ERR_UNRECOGNIZED;
@@ -2016,6 +2049,8 @@ static struct builtin builtin_impsprobe =
 static int
 initrd_func (char *arg, int flags)
 {
+  (void)flags;
+
   switch (kernel_type)
     {
     case KERNEL_TYPE_LINUX:
@@ -2074,12 +2109,12 @@ install_func (char *arg, int flags)
   int is_force_lba = 0;
   /* Was the last sector full? */
   int last_length = SECTOR_SIZE;
-  
 #ifdef GRUB_UTIL
   /* If the Stage 2 is in a partition mounted by an OS, this will store
      the filename under the OS.  */
   char *stage2_os_file = 0;
 #endif /* GRUB_UTIL */
+  (void)flags;
   
   auto void disk_read_savesect_func (int sector, int offset, int length);
   auto void disk_read_blocklist_func (int sector, int offset, int length);
@@ -2588,6 +2623,8 @@ static struct builtin builtin_install =
 static int
 ioprobe_func (char *arg, int flags)
 {
+  (void)flags;
+
 #ifdef GRUB_UTIL
   
   errnum = ERR_UNRECOGNIZED;
@@ -2630,6 +2667,7 @@ static struct builtin builtin_ioprobe =
 static int
 print_func (char *arg, int flags)
 {
+  (void)flags;
   printf("%s\n", arg);
 
   return 0;
@@ -2653,6 +2691,7 @@ kernel_func (char *arg, int flags)
   int len;
   kernel_t suggested_type = KERNEL_TYPE_NONE;
   unsigned long load_flags = 0;
+  (void)flags;
 
 #ifndef AUTO_LINUX_MEM_OPT
   load_flags |= KERNEL_LOAD_NO_MEM_OPTION;
@@ -2739,6 +2778,8 @@ static struct builtin builtin_kernel =
 static int
 lock_func (char *arg, int flags)
 {
+  (void)arg; (void)flags;
+
   if (! auth && password)
     {
       errnum = ERR_PRIVILEGED;
@@ -2762,6 +2803,8 @@ static struct builtin builtin_lock =
 static int
 makeactive_func (char *arg, int flags)
 {
+  (void)arg; (void)flags;
+
   if (! make_saved_active ())
     return 1;
 
@@ -2788,6 +2831,7 @@ map_func (char *arg, int flags)
   char *from_drive;
   unsigned long to, from;
   int i;
+  (void)arg; (void)flags;
   
   to_drive = arg;
   from_drive = skip_to (0, arg);
@@ -2855,6 +2899,7 @@ md5crypt_func (char *arg, int flags)
   const char *const seedchars =
     "./0123456789ABCDEFGHIJKLMNOPQRST"
     "UVWXYZabcdefghijklmnopqrstuvwxyz";
+  (void)arg; (void)flags;
   
   /* First create a salt.  */
 
@@ -2907,6 +2952,7 @@ static int
 module_func (char *arg, int flags)
 {
   int len = grub_strlen (arg);
+  (void)flags;
 
   switch (kernel_type)
     {
@@ -2984,6 +3030,8 @@ static struct builtin builtin_modulenounzip =
 static int
 pager_func (char *arg, int flags)
 {
+  (void)flags;
+
   /* If ARG is empty, toggle the flag.  */
   if (! *arg)
     use_pager = ! use_pager;
@@ -3021,6 +3069,7 @@ partnew_func (char *arg, int flags)
   int end_cl, end_ch, end_dh;
   int entry;
   char mbr[512];
+  (void)flags;
 
   /* Convert a LBA address to a CHS address in the INT 13 format.  */
   auto void lba_to_chs (int lba, int *cl, int *ch, int *dh);
@@ -3140,6 +3189,7 @@ parttype_func (char *arg, int flags)
   unsigned long start, len, offset, ext_offset, gpt_offset;
   int entry, type, gpt_count, gpt_size;
   char mbr[512];
+  (void)flags;
 
   /* Get the drive and the partition.  */
   if (! set_device (arg))
@@ -3293,6 +3343,8 @@ static struct builtin builtin_password =
 static int
 pause_func (char *arg, int flags)
 {
+  (void)flags;
+
   printf("%s\n", arg);
 
   /* If ESC is returned, then abort this entry.  */
@@ -3368,6 +3420,7 @@ static int
 read_func (char *arg, int flags)
 {
   int addr;
+  (void)flags;
 
   if (! safe_parse_maxint (&arg, &addr))
     return 1;
@@ -3392,6 +3445,8 @@ static struct builtin builtin_read =
 static int
 reboot_func (char *arg, int flags)
 {
+  (void)arg; (void)flags;
+
   grub_reboot ();
 
   /* Never reach here.  */
@@ -3509,6 +3564,8 @@ real_root_func (char *arg, int attempt_mount)
 static int
 root_func (char *arg, int flags)
 {
+  (void)flags;
+
   return real_root_func (arg, 1);
 }
 
@@ -3535,6 +3592,8 @@ static struct builtin builtin_root =
 static int
 rootnoverify_func (char *arg, int flags)
 {
+  (void)flags;
+
   return real_root_func (arg, 0);
 }
 
@@ -3824,6 +3883,7 @@ serial_func (char *arg, int flags)
   int word_len = UART_8BITS_WORD;
   int parity = UART_NO_PARITY;
   int stop_bit_len = UART_1_STOP_BIT;
+  (void)flags;
 
   /* Process GNU-style long options.
      FIXME: We should implement a getopt-like function, to avoid
@@ -4057,6 +4117,7 @@ setkey_func (char *arg, int flags)
   char *to_key, *from_key;
   int to_code, from_code;
   int map_in_interrupt = 0;
+  (void)flags;
   
   auto int find_key_code (char *key);
   auto int find_ascii_code (char *key);
@@ -4735,6 +4796,7 @@ static int
 terminfo_func (char *arg, int flags)
 {
   struct terminfo term;
+  (void)flags;
 
   if (*arg)
     {
@@ -4831,6 +4893,7 @@ static int
 testload_func (char *arg, int flags)
 {
   int i;
+  (void)flags;
 
   kernel_type = KERNEL_TYPE_NONE;
 
@@ -4921,6 +4984,7 @@ testvbe_func (char *arg, int flags)
   int mode_number;
   struct vbe_controller controller;
   struct vbe_mode mode;
+  (void)flags;
   
   if (! *arg)
     {
@@ -5049,6 +5113,8 @@ static struct builtin builtin_tftpserver =
 static int
 timeout_func (char *arg, int flags)
 {
+  (void)arg; (void)flags;
+
   if (! safe_parse_maxint (&arg, &grub_timeout))
     return 1;
 
@@ -5072,6 +5138,8 @@ static struct builtin builtin_timeout =
 static int
 title_func (char *arg, int flags)
 {
+  (void)arg; (void)flags;
+
   /* This function is not actually used at least currently.  */
   return 0;
 }
@@ -5093,6 +5161,8 @@ static struct builtin builtin_title =
 static int
 unhide_func (char *arg, int flags)
 {
+  (void)flags;
+
   if (! set_device (arg))
     return 1;
 
@@ -5117,6 +5187,8 @@ static struct builtin builtin_unhide =
 static int
 uppermem_func (char *arg, int flags)
 {
+  (void)flags;
+
   if (! safe_parse_maxint (&arg, (int *) &mbi.mem_upper))
     return 1;
 
@@ -5142,6 +5214,7 @@ vbeprobe_func (char *arg, int flags)
   struct vbe_controller controller;
   unsigned short *mode_list;
   int mode_number = -1;
+  (void)flags;
   
   auto unsigned long vbe_far_ptr_to_linear (unsigned long);
   
