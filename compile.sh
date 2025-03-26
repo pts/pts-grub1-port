@@ -3,6 +3,7 @@
 #
 # !! fix: remaining instances of -Wsign-compare
 # !! size optimization: write le64 in assembly: stage2/fsys_xfs.c
+# !! fix: with a multiboot kernel, only , bss=... is displayed (line too long?)
 #
 
 test "$0" = "${0%/*}" || cd "${0%/*}"
