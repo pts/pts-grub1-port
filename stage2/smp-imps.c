@@ -308,7 +308,7 @@ get_checksum (unsigned start, int length)
 static int
 boot_cpu (imps_processor * proc)
 {
-  unsigned bootaddr, accept_status;
+  unsigned bootaddr;
   unsigned bios_reset_vector = PHYS_TO_VIRTUAL (BIOS_RESET_VECTOR);
 
   /* %%%%% ESB */
@@ -328,7 +328,7 @@ boot_cpu (imps_processor * proc)
   if (proc->apic_ver & 0x10)
     {
       IMPS_LAPIC_WRITE (LAPIC_ESR, 0);
-      accept_status = IMPS_LAPIC_READ (LAPIC_ESR);
+      (void) IMPS_LAPIC_READ (LAPIC_ESR);
     }
 
 #if 0

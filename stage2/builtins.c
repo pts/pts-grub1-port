@@ -2057,10 +2057,9 @@ install_func (char *arg, int flags)
   char *config_filename = stage2_second_buffer + SECTOR_SIZE;
   char *dummy = config_filename + SECTOR_SIZE;
   int new_drive = GRUB_INVALID_DRIVE;
-  int dest_drive, dest_partition, dest_sector;
+  int dest_drive, dest_partition;
   int src_drive, src_partition, src_part_start;
   int i;
-  struct geometry dest_geom, src_geom;
   int saved_sector;
   int stage2_first_sector, stage2_second_sector;
   char *ptr;
@@ -2196,8 +2195,8 @@ install_func (char *arg, int flags)
   /* Store the information for the destination device.  */
   dest_drive = current_drive;
   dest_partition = current_partition;
-  dest_geom = buf_geom;
-  dest_sector = part_start;
+  /*dest_geom = buf_geom;*/  /* Unused. */
+  /*dest_sector = part_start;*/  /* Unused. */
 
   /* Copy the possible DOS BPB, 59 bytes at byte offset 3.  */
   grub_memmove (stage1_buffer + BOOTSEC_BPB_OFFSET,
@@ -2241,7 +2240,7 @@ install_func (char *arg, int flags)
   src_drive = current_drive;
   src_partition = current_partition;
   src_part_start = part_start;
-  src_geom = buf_geom;
+  /*src_geom = buf_geom;*/  /* Unused. */
   
   if (! new_drive)
     new_drive = src_drive;
@@ -3731,10 +3730,8 @@ savedefault_helper (char *arg, int flags)
   saved_partition = install_partition;
   if (grub_open (default_file))
     {
-      int len;
-      
       disk_read_hook = disk_read_savesect_func;
-      len = grub_read (buf, sizeof (buf));
+      (void) grub_read (buf, sizeof (buf));
       buf[9]='\0';/* Make sure grub_strstr() below terminates */
       disk_read_hook = 0;
       grub_close ();
