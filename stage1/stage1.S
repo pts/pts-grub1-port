@@ -38,6 +38,22 @@
 	.file	"stage1.S"
 
 	.text
+	/* To simplify the build process, we want our `_start' code
+	 * below to start at a fixed file offset in the linker output file
+	 * (stage1/stage1.exec), so that subsequent steps can easily
+	 * remove the header bytes in front of it. (It's not possible to
+	 * start at the beginning of the linker output file, because it
+	 * starts with the ELF-32 header.)
+	 *
+	 * To ensure this with GNU ld(1), we use an unusually large
+	 * alignment of 512 bytes. The total number of program headers
+	 * (typically 1 or 2 PT_LOAD and 0 or 1 PT_GNU_STACK) and their
+	 * maximum alignment (typically 1, 4 or 32) determines the
+	 * file offset. (The shortest is 52+32 bytes with 1 PT_LOAD with
+	 * alignment of 1--4, no PT_GNU_STACK.) (An alignment of 32 bytes
+	 * is typically emitted for `char myvar[128];' by GCC 4.8.5.)
+	 */
+	.align 512
 
 	/* Tell GAS to generate 16-bit instructions so that this code works
 	   in real mode. */

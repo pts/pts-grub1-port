@@ -13,10 +13,11 @@ The goals of pts-grub1-port:
 
 * (achieved) reproducible build: all tools are included (and statically
   linked) to rerun the build reproducible on Linux i386 and amd64 systems
+* (achieved) fixing most GCC 4.8.5 warnings
 * fixing all GCC 4.8.5 warnings
 * fixing some bugs
 * adding small convenience features
-* optimizing *stage2* for size: reducing it from ~134 KiB to ~97 KiB
+* (achieved) optimizing *stage2* for size: reducing it from ~134 KiB to ~97 KiB
 * creating a UPX-LZMA-compressed *stage2*: the goal is ~52 KiB
 
 pts-grub1-port is based on:

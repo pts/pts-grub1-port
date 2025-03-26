@@ -46,7 +46,40 @@
 	
 	.file	"asm.S"
 
-	.text
+	/* We want pre_stage2 (i.e. at file offset of stage2, right after
+	 * the start sector emitted by start.S) to start with our `_start'
+	 * code below.
+	 *
+	 * To ensure this with GNU ld(1) >=2.22, we put this code to section
+	 * .text.unlikely, which is the first object section put to .text by
+	 * ld(1). The order is (as dumped by `ld -m elf_i386 -verbose'):
+	 * .text.unlikely, .text.exit, .text.startup, .text.hot, .text, .stub).
+	 *
+	 * Please note that with GCC 4.8.5, `gcc -Os' enables `gcc
+	 * -freorder-functions', which puts some functions to
+	 * .text.unlikely (or .text.hot) instead of .text. To make sure
+	 * that this `_start' code comes even earlier, we put stage2/asm.o
+	 * earlier in the GNU ld(1) command line. GNU ld(1) respects this
+	 * command-line order within the same input section (such as
+	 * .text.unlikely).
+	 */
+	.section .text.unlikely,"ax",@progbits
+	/* To simplify the build process, we want our `_start' code
+	 * below to start at a fixed file offset in the linker output file
+	 * (stage2/pre_stage2.exec), so that subsequent steps can easily
+	 * remove the header bytes in front of it. (It's not possible to
+	 * start at the beginning of the linker output file, because it
+	 * starts with the ELF-32 header.)
+	 *
+	 * To ensure this with GNU ld(1), we use an unusually large
+	 * alignment of 512 bytes. The total number of program headers
+	 * (typically 1 or 2 PT_LOAD and 0 or 1 PT_GNU_STACK) and their
+	 * maximum alignment (typically 1, 4 or 32) determines the
+	 * file offset. (The shortest is 52+32 bytes with 1 PT_LOAD with
+	 * alignment of 1--4, no PT_GNU_STACK.) (An alignment of 32 bytes
+	 * is typically emitted for `char myvar[128];' by GCC 4.8.5.)
+	 */
+	.align 512
 
 	/* Tell GAS to generate 16-bit instructions so that this code works
 	   in real mode. */
