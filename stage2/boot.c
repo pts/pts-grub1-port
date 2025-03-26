@@ -102,7 +102,7 @@ load_image (char *kernel, char *arg, kernel_t suggested_type,
        || pu.elf->e_ident[EI_OSABI] == ELFOSABI_FREEBSD
        || grub_strcmp ((const char *)(pu.elf->e_ident + EI_BRAND), "FreeBSD") == 0
        || suggested_type == KERNEL_TYPE_NETBSD)
-      && len > sizeof (Elf32_Ehdr)
+      && (unsigned)len > sizeof (Elf32_Ehdr)
       && BOOTABLE_I386_ELF ((*((Elf32_Ehdr *) buffer))))
     {
       if (type == KERNEL_TYPE_MULTIBOOT)
@@ -117,7 +117,7 @@ load_image (char *kernel, char *arg, kernel_t suggested_type,
          place in the file -- this generally won't happen */
       if (pu.elf->e_phoff == 0 || pu.elf->e_phnum == 0
 	  || ((pu.elf->e_phoff + (pu.elf->e_phentsize * pu.elf->e_phnum))
-	      >= len))
+	      >= (unsigned)len))
 	errnum = ERR_EXEC_FORMAT;
       str = "elf";
 
@@ -161,7 +161,7 @@ load_image (char *kernel, char *arg, kernel_t suggested_type,
       if (pu.mb->header_addr < pu.mb->load_addr
 	  || pu.mb->load_end_addr <= pu.mb->load_addr
 	  || pu.mb->bss_end_addr < pu.mb->load_end_addr
-	  || (pu.mb->header_addr - pu.mb->load_addr) > i)
+	  || (int)(pu.mb->header_addr - pu.mb->load_addr) > i)
 	errnum = ERR_EXEC_FORMAT;
 
       if (cur_addr < 0x100000)
@@ -171,7 +171,7 @@ load_image (char *kernel, char *arg, kernel_t suggested_type,
       exec_type = 2;
       str = "kludge";
     }
-  else if (len > sizeof (struct exec) && !N_BADMAG ((*(pu.aout))))
+  else if ((unsigned)len > sizeof (struct exec) && !N_BADMAG ((*(pu.aout))))
     {
       entry_addr = (entry_func) pu.aout->a_entry;
 
@@ -272,7 +272,7 @@ load_image (char *kernel, char *arg, kernel_t suggested_type,
       linux_data_tmp_addr = (char *) LINUX_BZIMAGE_ADDR + text_len;
       
       if (! big_linux
-	  && text_len > linux_data_real_addr - (char *) LINUX_ZIMAGE_ADDR)
+	  && (int)text_len > linux_data_real_addr - (char *) LINUX_ZIMAGE_ADDR)
 	{
 	  grub_printf (" linux 'zImage' kernel too big, try 'make bzImage'\n");
 	  errnum = ERR_WONT_FIT;
@@ -504,7 +504,7 @@ load_image (char *kernel, char *arg, kernel_t suggested_type,
         printf (", loadaddr=0x%x, text%s=0x%x", cur_addr, str, text_len);
 
       /* read text, then read data */
-      if (grub_read ((char *) RAW_ADDR (cur_addr), text_len) == text_len)
+      if (grub_read ((char *) RAW_ADDR (cur_addr), text_len) == (int)text_len)
 	{
 	  cur_addr += text_len;
 
@@ -519,7 +519,7 @@ load_image (char *kernel, char *arg, kernel_t suggested_type,
 	      printf (", data=0x%x", data_len);
 
 	      if ((grub_read ((char *) RAW_ADDR (cur_addr), data_len)
-		   != data_len)
+		   != (int)data_len)
 		  && !errnum)
 		errnum = ERR_EXEC_FORMAT;
 	      cur_addr += data_len;
@@ -537,7 +537,7 @@ load_image (char *kernel, char *arg, kernel_t suggested_type,
 	errnum = ERR_EXEC_FORMAT;
 
       if (!errnum && pu.aout->a_syms
-	  && pu.aout->a_syms < (filemax - filepos))
+	  && pu.aout->a_syms < (unsigned)(filemax - filepos))
 	{
 	  int symtab_err, orig_addr = cur_addr;
 
@@ -553,7 +553,7 @@ load_image (char *kernel, char *arg, kernel_t suggested_type,
 	  printf (", symtab=0x%x", pu.aout->a_syms);
 
 	  if (grub_read ((char *) RAW_ADDR (cur_addr), pu.aout->a_syms)
-	      == pu.aout->a_syms)
+	      == (int)pu.aout->a_syms)
 	    {
 	      cur_addr += pu.aout->a_syms;
 	      mbi.syms.a.tabsize = pu.aout->a_syms;
@@ -634,7 +634,7 @@ load_image (char *kernel, char *arg, kernel_t suggested_type,
 	      if (filesiz > memsiz)
 		filesiz = memsiz;
 	      /* mark memory as used */
-	      if (cur_addr < memaddr + memsiz)
+	      if ((unsigned)cur_addr < memaddr + memsiz)
 		cur_addr = memaddr + memsiz;
 	      if (elf_kernel_addr > cur_addr)
 		elf_kernel_addr = cur_addr;
@@ -645,7 +645,7 @@ load_image (char *kernel, char *arg, kernel_t suggested_type,
 
 	      /* load the segment */
 	      if (memcheck (memaddr, memsiz)
-		  && grub_read ((char *) memaddr, filesiz) == filesiz)
+		  && grub_read ((char *) memaddr, filesiz) == (int)filesiz)
 		{
 		  if (memsiz > filesiz)
 		    memset ((char *) (memaddr + filesiz), 0, memsiz - filesiz);
@@ -688,7 +688,7 @@ load_image (char *kernel, char *arg, kernel_t suggested_type,
 		  
 		  printf (", shtab=0x%x", cur_addr);
   		  
-		  for (i = 0; i < mbi.syms.e.num; i++)
+		  for (i = 0; i < (int)mbi.syms.e.num; i++)
 		    {
 		      /* This section is a loaded section,
 			 so we don't care.  */

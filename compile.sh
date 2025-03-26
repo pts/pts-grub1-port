@@ -1,7 +1,7 @@
 #! /bin/sh --
 # by pts@fazekas.hu at Wed Mar 26 00:07:54 CET 2025
 #
-# !! fix: fix all warnings
+# !! fix: remaining instances of -Wsign-compare
 # !! size optimization: write le64 in assembly: stage2/fsys_xfs.c
 # !! size optimization: enable -Os for as many source files as possible
 #

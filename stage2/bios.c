@@ -100,8 +100,7 @@ biosdisk (int read, int drive, struct geometry *geometry,
     }
   else
     {
-      int cylinder_offset, head_offset, sector_offset;
-      int head;
+      unsigned cylinder_offset, head_offset, sector_offset, head;
 
       /* SECTOR_OFFSET is counted from one, while HEAD_OFFSET and
 	 CYLINDER_OFFSET are counted from zero.  */
