@@ -66,7 +66,7 @@ load_image (char *kernel, char *arg, kernel_t suggested_type,
   if (!grub_open (kernel))
     return KERNEL_TYPE_NONE;
 
-  if (!(len = grub_read (buffer, MULTIBOOT_SEARCH)) || len < 32)
+  if (!(len = grub_read ((char*)buffer, MULTIBOOT_SEARCH)) || len < 32)
     {
       grub_close ();
       
@@ -100,7 +100,7 @@ load_image (char *kernel, char *arg, kernel_t suggested_type,
   /* ELF loading supported if multiboot, FreeBSD and NetBSD.  */
   if (((type == KERNEL_TYPE_MULTIBOOT && ! (flags & MULTIBOOT_AOUT_KLUDGE))
        || pu.elf->e_ident[EI_OSABI] == ELFOSABI_FREEBSD
-       || grub_strcmp (pu.elf->e_ident + EI_BRAND, "FreeBSD") == 0
+       || grub_strcmp ((const char *)(pu.elf->e_ident + EI_BRAND), "FreeBSD") == 0
        || suggested_type == KERNEL_TYPE_NETBSD)
       && len > sizeof (Elf32_Ehdr)
       && BOOTABLE_I386_ELF ((*((Elf32_Ehdr *) buffer))))
@@ -1093,7 +1093,7 @@ bsd_boot (kernel_t type, int bootdev, char *arg)
       bi.bi_pad[0] = bi.bi_pad[1] = 0;
 
       if (*kernelname == '/')
-	bi.bi_kernelname = kernelname;
+	bi.bi_kernelname = (unsigned char*)kernelname;
       else
 	bi.bi_kernelname = 0;
 

@@ -166,7 +166,7 @@ md5_update (const char *input, int inputlen)
   inputlen -= 64 - buflen;
   while (inputlen >= 64)
     {
-      md5_transform (input);
+      md5_transform ((const unsigned char*)input);
       input += 64;
       inputlen -= 64;
     }
@@ -246,8 +246,8 @@ md5_password (const char *key, char *crypted, int check)
   md5_update (key, keylen);
   md5_update (crypted, 3 + saltlen); /* include the $1$ header */
   for (i = keylen; i > 16; i -= 16)
-    md5_update (alt_result, 16);
-  md5_update (alt_result, i);
+    md5_update ((const char*)alt_result, 16);
+  md5_update ((const char*)alt_result, i);
 
   for (i = keylen; i > 0; i >>= 1)
     md5_update (key + ((i & 1) ? keylen : 0), 1);
@@ -262,7 +262,7 @@ md5_password (const char *key, char *crypted, int check)
       if ((i & 1) != 0)
 	md5_update (key, keylen);
       else
-	md5_update (alt_result, 16);
+	md5_update ((const char*)alt_result, 16);
       
       if (i % 3 != 0)
 	md5_update (salt, saltlen);
@@ -271,7 +271,7 @@ md5_password (const char *key, char *crypted, int check)
 	md5_update (key, keylen);
 
       if ((i & 1) != 0)
-	md5_update (alt_result, 16);
+	md5_update ((const char*)alt_result, 16);
       else
 	md5_update (key, keylen);
       digest = md5_final ();
