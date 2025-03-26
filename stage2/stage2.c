@@ -945,10 +945,10 @@ cmain (void)
 		  char *def;
 		  if((tmp = grub_strstr(p, ":")) != NULL)
 		  {
-		    *tmp++;
-		    grub_strcpy(&def, &tmp);
+		    ++tmp;
+		    def = tmp;
 		  }else
-		    grub_strcpy(&def, &p);
+		    def = p;
 		  
 		  safe_parse_maxint (&def, &saved_entryno);
 		}
