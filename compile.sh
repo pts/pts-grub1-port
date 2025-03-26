@@ -19,15 +19,20 @@ PRE_STAGE2_OS='stage2/asm.o stage2/bios.o stage2/boot.o stage2/builtins.o stage2
 SRCS='stage1/stage1.S stage2/asm.S stage2/bios.c stage2/boot.c stage2/builtins.c stage2/char_io.c stage2/cmdline.c stage2/common.c stage2/console.c stage2/disk_io.c stage2/fsys_ext2fs.c stage2/fsys_fat.c stage2/fsys_ffs.c stage2/fsys_iso9660.c stage2/fsys_jfs.c stage2/fsys_minix.c stage2/fsys_reiserfs.c stage2/fsys_ufs2.c stage2/fsys_vstafs.c stage2/fsys_xfs.c stage2/gunzip.c stage2/hercules.c stage2/md5.c stage2/serial.c stage2/smp-imps.c stage2/stage2.c stage2/terminfo.c stage2/tparm.c'
 SRCS_LATE='stage2/start.S'  # Needs stage2/stage2_size.h.
 
+Q=; V=-v; DDQ=
+
+if test "$1" = -q; then Q=-q; DDQ=status=none; V=; shift; fi  # Quiet.
+
 # busybox-minicc-1.21.1.upx wouldn't work, because it lacks the dd applet.
 
+dd=dd  # BusyBox builtin applet.
 as=tools/gaself32-2.24.upx
 ld=tools/ld-2.22.upx
 cc1=tools/cc1-4.8.5.upx
 sstripml=tools/sstrip-ml-v1
 
 cmd() {
-  (set -x && : "$@")
+  if test -z "$Q"; then (set -x && : "$@"); fi
   command "$@"
 }
 
@@ -49,23 +54,25 @@ rm -f stage[12]/*.[opqrs] stage[12]/*.exec stage1/stage1 stage2/stage2 stage2/st
 for srcf in $SRCS; do compile; done
 cmd "$ld" $LDFLAGS -Ttext=0x7c00 -o stage1/stage1.exec stage1/stage1.o
 cmd cat stage1/stage1.exec >stage1/stage1.r
-cmd "$sstripml" stage1/stage1.r  # Strip ELF-32 section headers etc. from the end.
-cmd dd if=stage1/stage1.r of=stage1/stage1 skip=1 bs=84  # Strip the ELF-32 ehdr and phdr.
+cmd "$sstripml" $V stage1/stage1.r  # Strip ELF-32 section headers etc. from the end.
+cmd "$dd" if=stage1/stage1.r of=stage1/stage1 skip=1 bs=84 $DDQ  # Strip the ELF-32 ehdr and phdr.
 cmd "$ld" $LDFLAGS -Ttext=0x8200 -o stage2/pre_stage2.exec  $PRE_STAGE2_OS
 cmd cat stage2/pre_stage2.exec >stage2/pre_stage2.r
-cmd "$sstripml" stage2/pre_stage2.r  # Strip ELF-32 section headers etc. from the end.
-cmd dd if=stage2/pre_stage2.r of=stage2/pre_stage2 skip=1 bs=128  # Strip the ELF-32 ehdr and phdr.
+cmd "$sstripml" $V stage2/pre_stage2.r  # Strip ELF-32 section headers etc. from the end.
+cmd "$dd" if=stage2/pre_stage2.r of=stage2/pre_stage2 skip=1 bs=128 $DDQ  # Strip the ELF-32 ehdr and phdr.
 rm -f stage2/stage2_size.h
 set dummy $(ls -l stage2/pre_stage2)
 echo "#define STAGE2_SIZE $6" >stage2/stage2_size.h
 for srcf in $SRCS_LATE; do compile; done
 cmd "$ld" $LDFLAGS -Ttext=0x8000 -o stage2/start.exec stage2/start.o
 cmd cat stage2/start.exec >stage2/start.r
-cmd "$sstripml" stage2/start.r  # Strip ELF-32 section headers etc. from the end.
-cmd dd if=stage2/start.r of=stage2/start skip=1 bs=84  # Strip the ELF-32 ehdr and phdr.
+cmd "$sstripml" $V stage2/start.r  # Strip ELF-32 section headers etc. from the end.
+cmd "$dd" if=stage2/start.r of=stage2/start skip=1 bs=84 $DDQ  # Strip the ELF-32 ehdr and phdr.
 rm -f stage2/stage2
 cmd cat stage2/start stage2/pre_stage2 >stage2/stage2
 
-cmd ls -ld stage1/stage1 stage2/stage2
+if test -z "$Q"; then
+  cmd ls -ld stage1/stage1 stage2/stage2
+fi
 
 : "$0" OK.
