@@ -94,7 +94,9 @@ static int configfile_func (char *arg, int flags);
 
 static int savedefault_helper (char *arg, int flags);
 
+#if !defined(SUPPORT_DISKLESS) && defined(GRUB_UTIL)
 static int savedefault_shell (char *arg, int flags);
+#endif
 
 /* Initialize the data for builtins.  */
 void
