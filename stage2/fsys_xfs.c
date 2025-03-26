@@ -97,7 +97,7 @@ ino2offset (xfs_ino_t ino)
 	return ino & XFS_INO_MASK(XFS_INO_OFFSET_BITS);
 }
 
-static inline __const__ xfs_uint16_t
+static inline xfs_uint16_t
 le16 (xfs_uint16_t x)
 {
 	__asm__("xchgb %b0,%h0"	\
@@ -106,7 +106,7 @@ le16 (xfs_uint16_t x)
 		return x;
 }
 
-static inline __const__ xfs_uint32_t
+static inline xfs_uint32_t
 le32 (xfs_uint32_t x)
 {
 #if 0
@@ -122,7 +122,7 @@ le32 (xfs_uint32_t x)
 	return x;
 }
 
-static inline __const__ xfs_uint64_t
+static inline xfs_uint64_t
 le64 (xfs_uint64_t x)
 {
 	xfs_uint32_t h = x >> 32;

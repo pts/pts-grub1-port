@@ -1,5 +1,10 @@
 #! /bin/sh --
 # by pts@fazekas.hu at Wed Mar 26 00:07:54 CET 2025
+#
+# !! fix: fix all warnings
+# !! size optimization: write le64 in assembly: stage2/fsys_xfs.c
+# !! size optimization: enable -Os for as many source files as possible
+#
 
 test "$0" = "${0%/*}" || cd "${0%/*}"
 export LC_ALL=C  # For deterministic output. Typically not needed. Is it too late for Perl?
@@ -9,7 +14,7 @@ shift
 test "$ZSH_VERSION" && set -y 2>/dev/null  # SH_WORD_SPLIT for zsh(1). It's an invalid option in bash(1), and it's harmful (prevents echo) in ash(1).
 
 DFLAGS='-DHAVE_CONFIG_H -DSUPPORT_SERIAL=1 -DSUPPORT_HERCULES=1 -DFSYS_EXT2FS=1 -DFSYS_FAT=1 -DFSYS_FFS=1 -DFSYS_UFS2=1 -DFSYS_MINIX=1 -DFSYS_REISERFS=1 -DFSYS_VSTAFS=1 -DFSYS_JFS=1 -DFSYS_XFS=1 -DFSYS_ISO9660=1 -DUSE_MD5_PASSWORDS=1'
-WFLAGS='-W -Wall -Wmissing-prototypes -Wunused -Wshadow -Wpointer-arith -Wundef -Wformat-security -Wno-pointer-sign -Wno-shadow -Wno-sign-compare -Wno-missing-field-initializers -Wno-unused-parameter -Wno-unused-but-set-variable -Wno-attributes -Wno-ignored-qualifiers'
+WFLAGS='-W -Wall -Wmissing-prototypes -Wunused -Wshadow -Wpointer-arith -Wundef -Wformat-security -Wno-pointer-sign -Wno-shadow -Wno-sign-compare -Wno-missing-field-initializers -Wno-unused-parameter -Wno-unused-but-set-variable -Wno-attributes'
 FFLAGS='-fno-pic -fno-stack-protector -fno-builtin -fno-strict-aliasing -fno-unwind-tables -fno-asynchronous-unwind-tables'  #  -fdata-sections -ffunction-sections !! ??
 # Add -no-pie for newer GCCs.
 LDFLAGS='-m elf_i386 -s -static -nostdlib -N'  # -Wl,--gc-sections !! ??
