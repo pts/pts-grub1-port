@@ -835,6 +835,8 @@ static struct builtin builtin_default =
   "default [NUM | `saved']",
   "Set the default entry to entry number NUM (if not specified, it is"
   " 0, the first entry) or the entry number saved by savedefault."
+#else
+  0, 0
 #endif
 };
 
@@ -1491,6 +1493,8 @@ static struct builtin builtin_fallback =
   " immediately starts over using the NUM entry (same numbering as the"
   " `default' command). This obviously won't help if the machine"
   " was rebooted by a kernel that GRUB loaded."
+#else
+  0, 0
 #endif
 };
 
@@ -1911,6 +1915,8 @@ static struct builtin builtin_hiddenmenu =
 #if 0
   "hiddenmenu",
   "Hide the menu."
+#else
+  0, 0
 #endif
 };
 
@@ -5130,6 +5136,8 @@ static struct builtin builtin_timeout =
   "timeout SEC",
   "Set a timeout, in SEC seconds, before automatically booting the"
   " default entry (normally the first entry defined)."
+#else
+  0, 0
 #endif
 };
 
@@ -5153,6 +5161,8 @@ static struct builtin builtin_title =
   "title [NAME ...]",
   "Start a new boot entry, and set its name to the contents of the"
   " rest of the line, starting with the first non-space character."
+#else
+  0, 0
 #endif
 };
 

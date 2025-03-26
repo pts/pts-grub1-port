@@ -140,11 +140,11 @@ defconfig =
 {
   {
     {
-      IMPS_BCT_PROCESSOR, 0, 0, 0, 0, 0
+      IMPS_BCT_PROCESSOR, 0, 0, 0, 0, 0, ""
     }
     ,
     {
-      IMPS_BCT_PROCESSOR, 1, 0, 0, 0, 0
+      IMPS_BCT_PROCESSOR, 1, 0, 0, 0, 0, ""
     }
   }
   ,
