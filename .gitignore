@@ -1,0 +1,9 @@
+*~
+*.exec
+*.[opqrs]
+*.good
+/stage1/stage1
+/stage2/stage2
+/stage2/start
+/stage2/pre_stage2
+/stage2/stage2_size.h
