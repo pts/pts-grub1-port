@@ -201,7 +201,7 @@ grub_printf (const char *format,...)
 	  case 'X':
 #endif
 	  case 'u':
-	    *convert_to_ascii (str, c, va_arg(dataptr, unsigned long *)) = 0;
+	    *convert_to_ascii (str, c, va_arg(dataptr, unsigned long)) = 0;
 	    grub_putstr (str);
 	    break;
 
@@ -239,7 +239,7 @@ grub_sprintf (char *buffer, const char *format, ...)
 	switch (c = *(format++))
 	  {
 	  case 'd': case 'u': case 'x':
-	    *convert_to_ascii (str, c, va_arg(dataptr, unsigned long *)) = 0;
+	    *convert_to_ascii (str, c, va_arg(dataptr, unsigned long)) = 0;
 
 	    ptr = str;
 
