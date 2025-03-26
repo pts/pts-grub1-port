@@ -21,12 +21,10 @@ SRCS_LATE='stage2/start.S'  # Needs stage2/stage2_size.h.
 
 # busybox-minicc-1.21.1.upx wouldn't work, because it lacks the dd applet.
 
-AS=tools/gaself32-2.24.upx
-LD=tools/ld-2.22.upx
-#CC1=/usr/lib/gcc/i686-linux-gnu/4.8/cc1
-#CC1=tools/cc1-trusty
-CC1=tools/cc1-4.8.5.upx
-SSTRIPML=tools/sstrip-ml-v1
+as=tools/gaself32-2.24.upx
+ld=tools/ld-2.22.upx
+cc1=tools/cc1-4.8.5.upx
+sstripml=tools/sstrip-ml-v1
 
 cmd() {
   (set -x && : "$@")
@@ -37,11 +35,11 @@ compile() {
   bf="${srcf%.*}"
   case "$srcf" in
    #*.c) "$GCC" $IFLAGS $FFLAGS $OFLAGS $DFLAGS $WFLAGS -c -o "$bf".o "$srcf" ;;
-   *.c) cmd "$CC1" $IFLAGS $FFLAGS $OFLAGS $DFLAGS $WFLAGS -quiet -o "$bf".s "$srcf" ;;  # Removed: -auxbase-strip stage2/file.o -dumpbase file.c 
-   *.S) cmd "$CC1" $IFLAGS $FFLAGS $OFLAGS $DFLAGS $WFLAGS -E -lang-asm -fno-directives-only -quiet -o "$bf".s "$srcf" ;;
+   *.c) cmd "$cc1" $IFLAGS $FFLAGS $OFLAGS $DFLAGS $WFLAGS -quiet -o "$bf".s "$srcf" ;;  # Removed: -auxbase-strip stage2/file.o -dumpbase file.c
+   *.S) cmd "$cc1" $IFLAGS $FFLAGS $OFLAGS $DFLAGS $WFLAGS -E -lang-asm -fno-directives-only -quiet -o "$bf".s "$srcf" ;;
    *) echo "fatal: unknown ext: $srcf" >&2; exit 2 ;;
   esac
-  "$AS" $IFLAGS --32 -o "$bf".o "$bf".s
+  "$as" $IFLAGS --32 -o "$bf".o "$bf".s
 }
 
 set -e
@@ -49,21 +47,21 @@ set -e
 rm -f stage[12]/*.[opqrs] stage[12]/*.exec stage1/stage1 stage2/stage2 stage2/start stage2/pre_stage2 stage2/stage2_size.h
 
 for srcf in $SRCS; do compile; done
-cmd "$LD" $LDFLAGS -Ttext=0x7c00 -o stage1/stage1.exec stage1/stage1.o
+cmd "$ld" $LDFLAGS -Ttext=0x7c00 -o stage1/stage1.exec stage1/stage1.o
 cmd cat stage1/stage1.exec >stage1/stage1.r
-cmd "$SSTRIPML" stage1/stage1.r  # Strip ELF-32 section headers etc. from the end.
+cmd "$sstripml" stage1/stage1.r  # Strip ELF-32 section headers etc. from the end.
 cmd dd if=stage1/stage1.r of=stage1/stage1 skip=1 bs=84  # Strip the ELF-32 ehdr and phdr.
-cmd "$LD" $LDFLAGS -Ttext=0x8200 -o stage2/pre_stage2.exec  $PRE_STAGE2_OS
+cmd "$ld" $LDFLAGS -Ttext=0x8200 -o stage2/pre_stage2.exec  $PRE_STAGE2_OS
 cmd cat stage2/pre_stage2.exec >stage2/pre_stage2.r
-cmd "$SSTRIPML" stage2/pre_stage2.r  # Strip ELF-32 section headers etc. from the end.
+cmd "$sstripml" stage2/pre_stage2.r  # Strip ELF-32 section headers etc. from the end.
 cmd dd if=stage2/pre_stage2.r of=stage2/pre_stage2 skip=1 bs=128  # Strip the ELF-32 ehdr and phdr.
 rm -f stage2/stage2_size.h
 set dummy $(ls -l stage2/pre_stage2)
 echo "#define STAGE2_SIZE $6" >stage2/stage2_size.h
 for srcf in $SRCS_LATE; do compile; done
-cmd "$LD" $LDFLAGS -Ttext=0x8000 -o stage2/start.exec stage2/start.o
+cmd "$ld" $LDFLAGS -Ttext=0x8000 -o stage2/start.exec stage2/start.o
 cmd cat stage2/start.exec >stage2/start.r
-cmd "$SSTRIPML" stage2/start.r  # Strip ELF-32 section headers etc. from the end.
+cmd "$sstripml" stage2/start.r  # Strip ELF-32 section headers etc. from the end.
 cmd dd if=stage2/start.r of=stage2/start skip=1 bs=84  # Strip the ELF-32 ehdr and phdr.
 rm -f stage2/stage2
 cmd cat stage2/start stage2/pre_stage2 >stage2/stage2
