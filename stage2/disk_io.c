@@ -134,9 +134,9 @@ int filepos;
 int filemax;
 
 static inline unsigned long
-log2 (unsigned long word)
+ul_log2 (unsigned long word)
 {
-  asm volatile ("bsfl %1,%0"
+  asm volatile ("bsfl %1,%0"  /* The 386 has it. */
 		: "=r" (word)
 		: "r" (word));
   return word;
@@ -146,7 +146,7 @@ int
 rawread (int drive, int sector, int byte_offset, int byte_len, char *buf)
 {
   int slen, sectors_per_vtrack;
-  int sector_size_bits = log2 (buf_geom.sector_size);
+  int sector_size_bits = ul_log2 (buf_geom.sector_size);
 
   if (byte_len <= 0)
     return 1;
@@ -169,7 +169,7 @@ rawread (int drive, int sector, int byte_offset, int byte_len, char *buf)
 	    }
 	  buf_drive = drive;
 	  buf_track = -1;
-	  sector_size_bits = log2 (buf_geom.sector_size);
+	  sector_size_bits = ul_log2 (buf_geom.sector_size);
 	}
 
       /* Make sure that SECTOR is valid.  */

@@ -57,9 +57,9 @@ struct iso_inode_info {
 
 
 static inline unsigned long
-log2 (unsigned long word)
+ul_log2 (unsigned long word)
 {
-  asm volatile ("bsfl %1,%0"
+  asm volatile ("bsfl %1,%0"  /* The 386 has it. */
 		:          "=r" (word)
 		:          "r" (word));
   return word;
@@ -68,7 +68,7 @@ log2 (unsigned long word)
 static int
 iso9660_devread (int sector, int byte_offset, int byte_len, char *buf)
 {
-  unsigned short sector_size_lg2 = log2(buf_geom.sector_size);
+  unsigned short sector_size_lg2 = ul_log2(buf_geom.sector_size);
 
   /*
    * We have to use own devread() function since BIOS return wrong geometry

@@ -55,10 +55,10 @@ struct fat_superblock
 #define FAT_CACHE_SIZE 2048
 
 static __inline__ unsigned long
-log2 (unsigned long word)
+ul_log2 (unsigned long word)
 {
   __asm__ ("bsfl %1,%0"
-	   : "=r" (word)
+	   : "=r" (word)  /* The 386 has it. */
 	   : "r" (word));
   return word;
 }
@@ -84,9 +84,9 @@ fat_mount (void)
   if (bpb.sects_per_clust == 0)
     return 0;
   
-  FAT_SUPER->sectsize_bits = log2 (FAT_CVT_U16 (bpb.bytes_per_sect));
+  FAT_SUPER->sectsize_bits = ul_log2 (FAT_CVT_U16 (bpb.bytes_per_sect));
   FAT_SUPER->clustsize_bits
-    = FAT_SUPER->sectsize_bits + log2 (bpb.sects_per_clust);
+    = FAT_SUPER->sectsize_bits + ul_log2 (bpb.sects_per_clust);
   
   /* Fill in info about super block */
   FAT_SUPER->num_sectors = FAT_CVT_U16 (bpb.short_sectors) 

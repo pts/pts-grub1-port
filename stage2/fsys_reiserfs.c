@@ -367,9 +367,9 @@ struct fsys_reiser_info
 
 
 static __inline__ unsigned long
-log2 (unsigned long word)
+ul_log2 (unsigned long word)
 {
-  __asm__ ("bsfl %1,%0"
+  __asm__ ("bsfl %1,%0"  /* The 386 has it. */
 	   : "=r" (word)
 	   : "r" (word));
   return word;
@@ -609,7 +609,7 @@ reiserfs_mount (void)
   
   INFO->version = super.s_version;
   INFO->blocksize = super.s_blocksize;
-  INFO->fullblocksize_shift = log2 (super.s_blocksize);
+  INFO->fullblocksize_shift = ul_log2 (super.s_blocksize);
   INFO->blocksize_shift = INFO->fullblocksize_shift - SECTOR_BITS;
   INFO->cached_slots = 
     (FSYSREISER_CACHE_SIZE >> INFO->fullblocksize_shift) - 1;
