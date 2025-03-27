@@ -278,7 +278,7 @@ boot_func (char *arg, int flags)
   cleanup_net ();
 #endif
   
-  grub_printf("Starting up ...\n");
+  if (!quiet_boot) grub_printf("Starting up ...\n");
   switch (kernel_type)
     {
     case KERNEL_TYPE_FREEBSD:
