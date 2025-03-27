@@ -125,9 +125,8 @@ le32 (xfs_uint32_t x)
 static inline xfs_uint64_t
 le64 (xfs_uint64_t x)
 {
-	xfs_uint32_t h = x >> 32;
-        xfs_uint32_t l = x & ((1ULL<<32)-1);
-        return (((xfs_uint64_t)le32(l)) << 32) | ((xfs_uint64_t)(le32(h)));
+        __asm__("xchgb %%al, %%ah; roll $16, %%eax; xchgb %%al, %%ah; xchgl %%eax, %%edx; xchgb %%al, %%ah; roll $16, %%eax; xchgb %%al, %%ah" : "=A" (x) : "0" (x) : "cc");
+        return x;
 }
 
 
