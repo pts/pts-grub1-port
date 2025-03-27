@@ -53,7 +53,7 @@ compile() {
    *.S) cmd "$cc1" $IFLAGS $FFLAGS $OFLAGS $DFLAGS $WFLAGS -E -lang-asm -fno-directives-only -quiet -o "$bf".s "$srcf" ;;
    *) echo "fatal: unknown ext: $srcf" >&2; exit 2 ;;
   esac
-  "$as" $IFLAGS --32 -o "$bf".o "$bf".s
+  "$as" $IFLAGS --32 -march=i386 -o "$bf".o "$bf".s
 }
 
 set -e
