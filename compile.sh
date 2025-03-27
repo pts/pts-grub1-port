@@ -1,6 +1,8 @@
 #! /bin/sh --
 # by pts@fazekas.hu at Wed Mar 26 00:07:54 CET 2025
 #
+# !! When selecting from the menu, it shouldn't print the commands executed (or should it?), at least not in quiet mode. Can we reuse the quiet menu with GRUB4DOS?
+#
 
 test "$0" = "${0%/*}" || cd "${0%/*}"
 export LC_ALL=C  # For deterministic output. Typically not needed. Is it too late for Perl?
