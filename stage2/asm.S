@@ -50,20 +50,23 @@
 	 * the start sector emitted by start.S) to start with our `_start'
 	 * code below.
 	 *
-	 * To ensure this with GNU ld(1) >=2.22, we put this code to section
-	 * .text.unlikely, which is the first object section put to .text by
+	 * To ensure this with GNU ld(1) >=2.22,
+	 * we put this `_start' code to section
+	 * .init, which is one of the first object sections put to .text by
 	 * ld(1). The order is (as dumped by `ld -m elf_i386 -verbose'):
-	 * .text.unlikely, .text.exit, .text.startup, .text.hot, .text, .stub).
+	 * .init, .text.unlikely, .text.exit, .text.startup, .text.hot, .text,
+	 * .stub). Alternatively, because no other part of the code is put to
+	 * .init, we could put this code the .text_unlikely, and mention
+	 * stage2/asm.o as the first object file on the GNU ld(1) command
+	 * line. GNU ld(1) respects this command-line order within the same
+	 * input section (such as .text.unlikely).  However, using .init is
+	 * safer, because then stage2/asm.o be anywhere.
 	 *
 	 * Please note that with GCC 4.8.5, `gcc -Os' enables `gcc
 	 * -freorder-functions', which puts some functions to
-	 * .text.unlikely (or .text.hot) instead of .text. To make sure
-	 * that this `_start' code comes even earlier, we put stage2/asm.o
-	 * earlier in the GNU ld(1) command line. GNU ld(1) respects this
-	 * command-line order within the same input section (such as
-	 * .text.unlikely).
+	 * .text.unlikely (or .text.hot) instead of .text.
 	 */
-	.section .text.unlikely,"ax",@progbits
+	.section .init,"ax",@progbits
 	/* To simplify the build process, we want our `_start' code
 	 * below to start at a fixed file offset in the linker output file
 	 * (stage2/pre_stage2.exec), so that subsequent steps can easily
@@ -1123,6 +1126,7 @@ ENTRY(check_int13_extensions)
 
 	/* check if AH=0x42 is supported if FORCE_LBA is zero */
 	movb	EXT_C(force_lba), %al
+	/*movb	(0x8211), %al*/
 	testb	%al, %al
 	jnz	2f
 	andw	$1, %cx

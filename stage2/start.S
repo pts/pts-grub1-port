@@ -42,7 +42,10 @@
 
 	.file	"start.S"
 
-	.text
+	/* Any section would work here, because this is the only source
+	 * file, but we use .init for symmetry with stage2/asm.S.
+	 */
+	.section .init,"ax",@progbits
 	/* To simplify the build process, we want our `_start' code
 	 * below to start at a fixed file offset in the linker output file
 	 * (stage1/stage1.exec), so that subsequent steps can easily

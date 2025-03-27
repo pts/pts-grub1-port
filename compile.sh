@@ -62,11 +62,11 @@ set -e
 rm -f stage[12]/*.[opqrs] stage[12]/*.exec stage1/stage1 stage2/stage2 stage2/start stage2/pre_stage2 stage2/stage2_size.h
 
 for srcf in $SRCS; do compile; done
-cmd "$ld" $LDFLAGS -Ttext=0x7c00 -o stage1/stage1.exec stage1/stage1.o
+cmd "$ld" $LDFLAGS --section-start=.init=0x7c00 -o stage1/stage1.exec stage1/stage1.o
 cmd cat stage1/stage1.exec >stage1/stage1.r
 cmd "$sstripml" $V stage1/stage1.r  # Strip ELF-32 section headers etc. from the end.
 cmd "$dd" if=stage1/stage1.r of=stage1/stage1 skip=1 bs=512 $DDQ  # Strip the ELF-32 ehdr and phdr.
-cmd "$ld" $LDFLAGS -Ttext=0x8200 -o stage2/pre_stage2.exec  $PRE_STAGE2_OS
+cmd "$ld" $LDFLAGS --section-start=.init=0x8200 -o stage2/pre_stage2.exec  $PRE_STAGE2_OS
 cmd cat stage2/pre_stage2.exec >stage2/pre_stage2.r
 cmd "$sstripml" $V stage2/pre_stage2.r  # Strip ELF-32 section headers etc. from the end.
 cmd "$dd" if=stage2/pre_stage2.r of=stage2/pre_stage2 skip=1 bs=512 $DDQ  # Strip the ELF-32 ehdr and phdr.
@@ -74,7 +74,7 @@ rm -f stage2/stage2_size.h
 set dummy $(ls -l stage2/pre_stage2)
 echo "#define STAGE2_SIZE $6" >stage2/stage2_size.h
 for srcf in $SRCS_LATE; do compile; done
-cmd "$ld" $LDFLAGS -Ttext=0x8000 -o stage2/start.exec stage2/start.o
+cmd "$ld" $LDFLAGS --section-start=.init=0x8000 -o stage2/start.exec stage2/start.o
 cmd cat stage2/start.exec >stage2/start.r
 cmd "$sstripml" $V stage2/start.r  # Strip ELF-32 section headers etc. from the end.
 cmd "$dd" if=stage2/start.r of=stage2/start skip=1 bs=512 $DDQ  # Strip the ELF-32 ehdr and phdr.
