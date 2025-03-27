@@ -1935,7 +1935,7 @@ static struct builtin builtin_quietboot =
   "quiet",
   quietboot_func,
   BUILTIN_CMDLINE | BUILTIN_HELP_LIST,
-  "quietboot",
+  "quiet",
   "Quiet boot messages."
 };
 
