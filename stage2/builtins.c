@@ -1922,7 +1922,7 @@ static struct builtin builtin_hiddenmenu =
 
 /* quietboot */
 static int
-quietboot_func (char *arg, int flags)
+quiet_func (char *arg, int flags)
 {
   (void)arg; (void)flags;
 
@@ -1930,10 +1930,10 @@ quietboot_func (char *arg, int flags)
   return 0;
 }
 
-static struct builtin builtin_quietboot =
+static struct builtin builtin_quiet =
 {
   "quiet",
-  quietboot_func,
+  quiet_func,
   BUILTIN_CMDLINE | BUILTIN_HELP_LIST,
   "quiet",
   "Quiet boot messages."
@@ -5558,7 +5558,7 @@ struct builtin *builtin_table[] =
 #ifdef GRUB_UTIL
   &builtin_quit,
 #endif /* GRUB_UTIL */
-  &builtin_quietboot,
+  &builtin_quiet,
 #ifdef SUPPORT_NETBOOT
   &builtin_rarp,
 #endif /* SUPPORT_NETBOOT */
