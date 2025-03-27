@@ -528,7 +528,7 @@ load_image (char *kernel, char *arg, kernel_t suggested_type,
 	      memset ((char *) RAW_ADDR (cur_addr), 0, bss_len);
 	      cur_addr += bss_len;
 
-	      printf (", bss=0x%x", (unsigned)bss_len);
+	      if (!quiet_boot) printf (", bss=0x%x", (unsigned)bss_len);
 	    }
 	}
       else if (!errnum)
