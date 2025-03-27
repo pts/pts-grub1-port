@@ -14,7 +14,7 @@ test "$ZSH_VERSION" && set -y 2>/dev/null  # SH_WORD_SPLIT for zsh(1). It's an i
 DFLAGS='-DHAVE_CONFIG_H -DSUPPORT_SERIAL=1 -DSUPPORT_HERCULES=1 -DFSYS_EXT2FS=1 -DFSYS_FAT=1 -DFSYS_FFS=1 -DFSYS_UFS2=1 -DFSYS_MINIX=1 -DFSYS_REISERFS=1 -DFSYS_VSTAFS=1 -DFSYS_JFS=1 -DFSYS_XFS=1 -DFSYS_ISO9660=1 -DUSE_MD5_PASSWORDS=1'
 WFLAGS='-W -Wall -Werror -Werror-implicit-function-declaration -Wmissing-prototypes -Wshadow -Wpointer-arith -Wundef -Wformat-security'
 # Enabling -fbuiltin here wouldn't change the stage2/stage2 file.
-FFLAGS='-fno-pic -fno-stack-protector -fno-builtin -fno-strict-aliasing -fno-unwind-tables -fno-asynchronous-unwind-tables'  #  -fdata-sections -ffunction-sections !! ??
+FFLAGS='-fno-pic -fno-stack-protector -fno-builtin -fno-strict-aliasing -fno-unwind-tables -fno-asynchronous-unwind-tables -fomit-frame-pointer'  #  -fdata-sections -ffunction-sections !! ??
 # Add -no-pie for newer GCCs.
 LDFLAGS='-m elf_i386 -s -static -nostdlib -N'  # -Wl,--gc-sections !! ??
 # -fno-reorder-functions would prevent GCC from putting some functions in
