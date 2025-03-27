@@ -84,7 +84,7 @@ int grub_timeout = -1;
 /* Whether to show the menu or not.  */
 int show_menu = 1;
 /* Whether to quiet boot messages or not. */
-int quiet_boot = 1;
+int quiet_boot = 0;
 /* The BIOS drive map.  */
 static unsigned short bios_drive_map[DRIVE_MAP_SIZE + 1];
 
