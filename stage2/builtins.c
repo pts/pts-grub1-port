@@ -178,15 +178,15 @@ blocklist_func (char *arg, int flags)
 	    {
 	      if (last_length == SECTOR_SIZE)
 		grub_printf ("%s%d+%d", num_entries ? "," : "",
-			     start_sector - part_start, num_sectors);
+			     (int)(start_sector - part_start), num_sectors);
 	      else if (num_sectors > 1)
 		grub_printf ("%s%d+%d,%d[0-%d]", num_entries ? "," : "",
-			     start_sector - part_start, num_sectors-1,
-			     start_sector + num_sectors-1 - part_start, 
+			     (int)(start_sector - part_start), (int)num_sectors-1,
+			     (int)(start_sector + num_sectors-1 - part_start), 
 			     last_length);
 	      else
 		grub_printf ("%s%d[0-%d]", num_entries ? "," : "",
-			     start_sector - part_start, last_length);
+			     (int)(start_sector - part_start), last_length);
 	      num_entries++;
 	      num_sectors = 0;
 	    }
@@ -195,7 +195,7 @@ blocklist_func (char *arg, int flags)
       if (offset > 0)
 	{
 	  grub_printf("%s%d[%d-%d]", num_entries ? "," : "",
-		      sector-part_start, offset, offset+length);
+		      (int)(sector-part_start), offset, offset+length);
 	  num_entries++;
 	}
       else
@@ -213,13 +213,13 @@ blocklist_func (char *arg, int flags)
   /* Print the device name.  */
   grub_printf ("(%cd%d",
 	       (current_drive & 0x80) ? 'h' : 'f',
-	       current_drive & ~0x80);
+	       (int)(current_drive & ~0x80));
   
   if ((current_partition & 0xFF0000) != 0xFF0000)
-    grub_printf (",%d", (current_partition >> 16) & 0xFF);
+    grub_printf (",%d", (int)((current_partition >> 16) & 0xFF));
   
   if ((current_partition & 0x00FF00) != 0x00FF00)
-    grub_printf (",%c", 'a' + ((current_partition >> 8) & 0xFF));
+    grub_printf (",%c", 'a' + (int)((current_partition >> 8) & 0xFF));
   
   grub_printf (")");
 
@@ -232,7 +232,7 @@ blocklist_func (char *arg, int flags)
    * full sector, since it doesn't matter if we read too much. */
   if (num_sectors > 0)
     grub_printf ("%s%d+%d", num_entries ? "," : "",
-		 start_sector - part_start, num_sectors);
+		 (int)(start_sector - part_start), num_sectors);
 
   grub_printf ("\n");
   
@@ -1166,7 +1166,7 @@ displayapm_func (char *arg, int flags)
 		   " 16-bit DS length: 0x%x\n",
 		   (unsigned) apm_bios_info.version,
 		   (unsigned) apm_bios_info.cseg,
-		   apm_bios_info.offset,
+		   (unsigned) apm_bios_info.offset,
 		   (unsigned) apm_bios_info.cseg_16,
 		   (unsigned) apm_bios_info.dseg_16,
 		   (unsigned) apm_bios_info.cseg_len,
@@ -1205,7 +1205,7 @@ displaymem_func (char *arg, int flags)
 
   grub_printf (" Lower memory: %uK, "
 	       "Upper memory (to first chipset hole): %uK\n",
-	       mbi.mem_lower, mbi.mem_upper);
+	       (unsigned)mbi.mem_lower, (unsigned)mbi.mem_upper);
 
   if (mbi.flags & MB_INFO_MEM_MAP)
     {
@@ -1225,10 +1225,10 @@ displaymem_func (char *arg, int flags)
 	  grub_printf ("   %s:  Base Address:  0x%x X 4GB + 0x%x,\n"
 		       "      Length:   0x%x X 4GB + 0x%x bytes\n",
 		       str,
-		       (unsigned long) (map->BaseAddr >> 32),
-		       (unsigned long) (map->BaseAddr & 0xFFFFFFFF),
-		       (unsigned long) (map->Length >> 32),
-		       (unsigned long) (map->Length & 0xFFFFFFFF));
+		       (unsigned) (map->BaseAddr >> 32),
+		       (unsigned) (map->BaseAddr & 0xFFFFFFFF),
+		       (unsigned) (map->Length >> 32),
+		       (unsigned) (map->Length & 0xFFFFFFFF));
 
 	  map = ((struct AddrRangeDesc *) (((int) map) + 4 + map->size));
 	}
@@ -1428,7 +1428,7 @@ embed_func (char *arg, int flags)
     return 1;
   
   grub_printf (" %d sectors are embedded.\n", size);
-  grub_sprintf (embed_info, "%d+%d", sector - part_start, size);
+  grub_sprintf (embed_info, "%d+%d", (int)(sector - part_start), size);
   return 0;
 }
 
@@ -1524,7 +1524,7 @@ find_func (char *arg, int flags)
 	  if (grub_open (filename))
 	    {
 	      grub_close ();
-	      grub_printf (" (fd%d)\n", drive);
+	      grub_printf (" (fd%d)\n", (int)drive);
 	      got_file = 1;
 	    }
 	}
@@ -1564,10 +1564,10 @@ find_func (char *arg, int flags)
 		      
 		      if (bsd_part == 0xFF)
 			grub_printf (" (hd%d,%d)\n",
-				     drive - 0x80, pc_slice);
+				     (int)drive - 0x80, pc_slice);
 		      else
 			grub_printf (" (hd%d,%d,%c)\n",
-				     drive - 0x80, pc_slice, bsd_part + 'a');
+				     (int)drive - 0x80, pc_slice, bsd_part + 'a');
 
 		      got_file = 1;
 		    }
@@ -1713,9 +1713,9 @@ geometry_func (char *arg, int flags)
 
   grub_printf ("drive 0x%x: C/H/S = %d/%d/%d, "
 	       "The number of sectors = %d, %s\n",
-	       current_drive,
-	       geom.cylinders, geom.heads, geom.sectors,
-	       geom.total_sectors, msg);
+	       (unsigned)current_drive,
+	       (int)geom.cylinders, (int)geom.heads, (int)geom.sectors,
+	       (int)geom.total_sectors, msg);
   real_open_partition (1);
 
   return 0;
@@ -3481,20 +3481,20 @@ print_root_device (void)
   else if (saved_drive & 0x80)
     {
       /* Hard disk drive.  */
-      grub_printf (" (hd%d", saved_drive - 0x80);
+      grub_printf (" (hd%d", (int)saved_drive - 0x80);
       
       if ((saved_partition & 0xFF0000) != 0xFF0000)
-	grub_printf (",%d", saved_partition >> 16);
+	grub_printf (",%d", (int)(saved_partition >> 16));
 
       if ((saved_partition & 0x00FF00) != 0x00FF00)
-	grub_printf (",%c", ((saved_partition >> 8) & 0xFF) + 'a');
+	grub_printf (",%c", (int)(((saved_partition >> 8) & 0xFF) + 'a'));
 
       grub_printf ("):");
     }
   else
     {
       /* Floppy disk drive.  */
-      grub_printf (" (fd%d):", saved_drive);
+      grub_printf (" (fd%d):", (int)saved_drive);
     }
 
   /* Print the filesystem information.  */

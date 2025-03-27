@@ -283,7 +283,7 @@ load_image (char *kernel, char *arg, kernel_t suggested_type,
 	{
          if (!quiet_boot)
 	   grub_printf ("   [Linux-%s, setup=0x%x, size=0x%x]\n",
-		        (big_linux ? "bzImage" : "zImage"), data_len, text_len);
+		        (big_linux ? "bzImage" : "zImage"), (unsigned)data_len, (unsigned)text_len);
 
 	  /* Video mode selection support. What a mess!  */
 	  /* NOTE: Even the word "mess" is not still enough to
@@ -500,7 +500,7 @@ load_image (char *kernel, char *arg, kernel_t suggested_type,
 	str = "-and-data";
      
       if (!quiet_boot)
-        printf (", loadaddr=0x%x, text%s=0x%x", cur_addr, str, text_len);
+        printf (", loadaddr=0x%x, text%s=0x%x", cur_addr, str, (unsigned)text_len);
 
       /* read text, then read data */
       if (IU_COMPARE(grub_read ((char *) RAW_ADDR (cur_addr), text_len), ==, (unsigned)text_len))
@@ -515,7 +515,7 @@ load_image (char *kernel, char *arg, kernel_t suggested_type,
 	      else
 		printf (", C");
 
-	      printf (", data=0x%x", data_len);
+	      printf (", data=0x%x", (unsigned)data_len);
 
 	      if ((IU_COMPARE(grub_read ((char *) RAW_ADDR (cur_addr), data_len), !=, (unsigned)data_len))
 		  && !errnum)
@@ -528,7 +528,7 @@ load_image (char *kernel, char *arg, kernel_t suggested_type,
 	      memset ((char *) RAW_ADDR (cur_addr), 0, bss_len);
 	      cur_addr += bss_len;
 
-	      printf (", bss=0x%x", bss_len);
+	      printf (", bss=0x%x", (unsigned)bss_len);
 	    }
 	}
       else if (!errnum)
@@ -548,7 +548,7 @@ load_image (char *kernel, char *arg, kernel_t suggested_type,
 	  *((int *) RAW_ADDR (cur_addr)) = pu.aout->a_syms;
 	  cur_addr += sizeof (int);
 	  
-	  printf (", symtab=0x%x", pu.aout->a_syms);
+	  printf (", symtab=0x%x", (unsigned)pu.aout->a_syms);
 
 	  if (IU_COMPARE(grub_read ((char *) RAW_ADDR (cur_addr), pu.aout->a_syms), ==, (unsigned)pu.aout->a_syms))
 	    {
@@ -848,7 +848,7 @@ load_initrd (char *initrd)
   memmove ((void *) RAW_ADDR (moveto), (void *) cur_addr, len);
 
   if (!quiet_boot)
-    printf ("   [Linux-initrd @ 0x%x, 0x%x bytes]\n", moveto, len);
+    printf ("   [Linux-initrd @ 0x%x, 0x%x bytes]\n", (unsigned)moveto, (unsigned)len);
 
   /* FIXME: Should check if the kernel supports INITRD.  */
   lh->ramdisk_image = RAW_ADDR (moveto);

@@ -892,8 +892,8 @@ int run_script (char *script, char *heap);
 #endif
 
 /* C library replacement functions with identical semantics. */
-void grub_printf (const char *format,...);
-int grub_sprintf (char *buffer, const char *format, ...);
+void grub_printf (const char *format,...) __attribute__((__format__(__printf__, 1, 2)));
+int grub_sprintf (char *buffer, const char *format, ...) __attribute__((__format__(__printf__, 2, 3)));
 int grub_tolower (int c);
 int grub_isspace (int c);
 int grub_strncat (char *s1, const char *s2, int n);

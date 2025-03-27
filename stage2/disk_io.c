@@ -927,7 +927,7 @@ real_open_partition (int flags)
 		{
 		  if (current_drive & 0x80)
 		    grub_printf ("   Partition num: %d, ",
-				 current_partition >> 16);
+				 (int)(current_partition >> 16));
 
 		  if (! IS_PC_SLICE_TYPE_BSD (current_slice))
 		    check_and_print_mount ();
