@@ -1,6 +1,7 @@
 #! /bin/sh --
 # by pts@fazekas.hu at Wed Mar 26 00:07:54 CET 2025
 #
+# !! make chainloader load more than 1 sector
 # !! When selecting from the menu, it shouldn't print the commands executed (or should it?), at least not in quiet mode. Can we reuse the quiet menu with GRUB4DOS?
 #
 

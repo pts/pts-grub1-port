@@ -329,6 +329,7 @@ boot_func (char *arg, int flags)
 
     case KERNEL_TYPE_MULTIBOOT:
       /* Multiboot */
+      mbi.boot_device = (saved_drive << 24) | saved_partition;
       multi_boot ((int) entry_addr, (int) &mbi);
       break;
 
