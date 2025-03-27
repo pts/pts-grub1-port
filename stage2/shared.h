@@ -33,9 +33,15 @@
  */
 
 /* Replace i < u with  IU_COMPARE(i, <, u). */
-#define IU_COMPARE(i, c, u) ((i) c (u))
+#define IU_COMPARE(i, c, u) ({ \
+    typedef char    __left_is_signed_int[__builtin_types_compatible_p(__typeof__(i), int     ) ? 1 : - 1] __attribute__((__used__)); \
+    typedef char __right_is_unsigned_int[__builtin_types_compatible_p(__typeof__(u), unsigned) ? 1 : - 1] __attribute__((__used__)); \
+    (unsigned)(i) c (u); })
 /* Replace u < i with  UI_COMPARE(u, <, i). */
-#define UI_COMPARE(u, c, i) ((u) c (i))
+#define UI_COMPARE(u, c, i) ({ \
+    typedef char   __right_is_signed_int[__builtin_types_compatible_p(__typeof__(i), int     ) ? 1 : - 1] __attribute__((__used__)); \
+    typedef char  __left_is_unsigned_int[__builtin_types_compatible_p(__typeof__(u), unsigned) ? 1 : - 1] __attribute__((__used__)); \
+    (u) c (unsigned)(i); })
 
 /* Add an underscore to a C symbol in assembler code if needed. */
 #ifdef HAVE_ASM_USCORE
