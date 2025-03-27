@@ -237,7 +237,7 @@ init_bios_info (void)
 
       extended_memory = (max_addr - 0x100000) >> 10;
     }
-  else if ((memtmp = get_eisamemsize ()) != -1)
+  else if (UI_COMPARE((unsigned)(memtmp = get_eisamemsize ()), !=, -1))
     {
       cont = memtmp & ~0xFFFF;
       memtmp = memtmp & 0xFFFF;

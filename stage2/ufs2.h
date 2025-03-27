@@ -409,11 +409,11 @@ struct fs {
  */
 #define blksize(fs, ip, lbn) \
 	(((lbn) >= NDADDR || (ip)->i_size >= smalllblktosize(fs, (lbn) + 1)) \
-	    ? (fs)->fs_bsize \
+	    ? (unsigned)(fs)->fs_bsize \
 	    : (fragroundup(fs, blkoff(fs, (ip)->i_size))))
 #define sblksize(fs, size, lbn) \
 	(((lbn) >= NDADDR || (size) >= ((lbn) + 1) << (fs)->fs_bshift) \
-	  ? (fs)->fs_bsize \
+	  ? (unsigned)(fs)->fs_bsize \
 	  : (fragroundup(fs, blkoff(fs, (size)))))
 
 

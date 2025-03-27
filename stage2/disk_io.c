@@ -173,7 +173,7 @@ rawread (int drive, int sector, int byte_offset, int byte_len, char *buf)
 	}
 
       /* Make sure that SECTOR is valid.  */
-      if (sector < 0 || sector >= buf_geom.total_sectors)
+      if (sector < 0 || IU_COMPARE(sector, >=, (unsigned)buf_geom.total_sectors))
 	{
 	  errnum = ERR_GEOM;
 	  return 0;
@@ -275,7 +275,7 @@ rawread (int drive, int sector, int byte_offset, int byte_len, char *buf)
 	  length = size - length;
 	  if (length > 0)
 	    {
-	      while (length > buf_geom.sector_size)
+	      while (IU_COMPARE(length, >, (unsigned)buf_geom.sector_size))
 		{
 		  (*disk_read_func) (sector_num++, 0, buf_geom.sector_size);
 		  length -= buf_geom.sector_size;
@@ -303,8 +303,7 @@ devread (int sector, int byte_offset, int byte_len, char *buf)
    *  Check partition boundaries
    */
   if (sector < 0
-      || ((sector + ((byte_offset + byte_len - 1) >> SECTOR_BITS))
-	  >= part_length))
+      || (IU_COMPARE((sector + ((byte_offset + byte_len - 1) >> SECTOR_BITS)), >=, (unsigned)part_length)))
     {
       errnum = ERR_OUTSIDE_PART;
       return 0;
@@ -361,7 +360,7 @@ rawwrite (int drive, int sector, char *buf)
       return 0;
     }
 
-  if (sector - sector % buf_geom.sectors == buf_track)
+  if (UI_COMPARE((unsigned)sector - (unsigned)sector % (unsigned)buf_geom.sectors, ==, buf_track))
     /* Clear the cache.  */
     buf_track = -1;
 
@@ -886,7 +885,7 @@ real_open_partition (int flags)
   part_start = 0;
 
   /* Make sure that buf_geom is valid. */
-  if (buf_drive != current_drive)
+  if (IU_COMPARE(buf_drive, !=, (unsigned)current_drive))
     {
       if (get_diskinfo (current_drive, &buf_geom))
 	{
@@ -973,7 +972,7 @@ real_open_partition (int flags)
 		      char str[16];
 		      
 		      if (! (current_drive & 0x80)
-			  || (dest_partition >> 16) == pc_slice)
+			  || UI_COMPARE((unsigned)(dest_partition >> 16), ==, pc_slice))
 			grub_sprintf (str, "%c)", bsd_part + 'a');
 		      else
 			grub_sprintf (str, "%d,%c)",
@@ -997,7 +996,7 @@ real_open_partition (int flags)
 	  if (! flags
 	      && (dest_partition == current_partition
 		  || ((dest_partition >> 16) == 0xFF
-		      && ((dest_partition >> 8) & 0xFF) == bsd_part)))
+		      && UI_COMPARE((unsigned)((dest_partition >> 8) & 0xFF), ==, bsd_part))))
 	    return 1;
 	}
     }
@@ -1488,7 +1487,7 @@ print_completions (int is_filename, int is_completion)
 		      for (j = 0; j < 8; j++)
 			{
 			  disk_no = (i * 0x80) + j;
-			  if ((disk_choice || disk_no == current_drive)
+			  if ((disk_choice || IU_COMPARE(disk_no, ==, (unsigned)current_drive))
 			      && ! get_diskinfo (disk_no, &geom))
 			    {
 			      char dev_name[8];

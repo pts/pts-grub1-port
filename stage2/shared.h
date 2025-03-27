@@ -27,6 +27,16 @@
 
 #include <config.h>
 
+/* IU_COMPARE(...) and UI_COMPARE(...) don't change the result, but they
+ * explicitly tag int--unsigned comparisons and hide them from `gcc
+ * -Wsign-compare.
+ */
+
+/* Replace i < u with  IU_COMPARE(i, <, u). */
+#define IU_COMPARE(i, c, u) ((i) c (u))
+/* Replace u < i with  UI_COMPARE(u, <, i). */
+#define UI_COMPARE(u, c, i) ((u) c (i))
+
 /* Add an underscore to a C symbol in assembler code if needed. */
 #ifdef HAVE_ASM_USCORE
 # define EXT_C(sym) _ ## sym

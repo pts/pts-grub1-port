@@ -410,7 +410,7 @@ block_read (int blockNr, int start, int len, char *buffer)
 	  j_len = *journal_table++;
 	  while (i++ < j_len)
 	    {
-	      if (*journal_table++ == blockNr)
+	      if (UI_COMPARE(*journal_table++, ==, blockNr))
 		{
 		  journal_table += j_len - i;
 		  goto found;
@@ -430,7 +430,7 @@ block_read (int blockNr, int start, int len, char *buffer)
 
 	  j_len = desc.j_len;
 	  while (i < j_len && i < JOURNAL_TRANS_HALF)
-	    if (desc.j_realblock[i++] == blockNr)
+	    if (UI_COMPARE(desc.j_realblock[i++], ==, blockNr))
 	      goto found;
 	  
 	  if (j_len >= JOURNAL_TRANS_HALF)
@@ -440,7 +440,7 @@ block_read (int blockNr, int start, int len, char *buffer)
 				  sizeof (commit), (char *) &commit))
 		return 0;
 	      while (i < j_len)
-		if (commit.j_realblock[i++ - JOURNAL_TRANS_HALF] == blockNr)
+		if (UI_COMPARE(commit.j_realblock[i++ - JOURNAL_TRANS_HALF], ==, blockNr))
 		  goto found;
 	    }
 	}
@@ -533,7 +533,7 @@ journal_init (void)
 	       * and need not to be stored here.
 	       */
 	      *journal_table++ = desc.j_len;
-	      for (i = 0; i < desc.j_len && i < JOURNAL_TRANS_HALF; i++)
+	      for (i = 0; IU_COMPARE(i, <, desc.j_len) && i < JOURNAL_TRANS_HALF; i++)
 		{
 		  *journal_table++ = desc.j_realblock[i];
 #ifdef REISERDEBUG
@@ -541,7 +541,7 @@ journal_init (void)
 			  desc.j_realblock[i], desc_block);
 #endif
 		}
-	      for (     ; i < desc.j_len; i++)
+	      for (     ; IU_COMPARE(i, <, desc.j_len); i++)
 		{
 		  *journal_table++ = commit.j_realblock[i-JOURNAL_TRANS_HALF];
 #ifdef REISERDEBUG
@@ -896,7 +896,7 @@ reiserfs_read (char *buf, int len)
 #endif /* REISERDEBUG */
   
   if (INFO->current_ih->ih_key.k_objectid != INFO->fileinfo.k_objectid
-      || IH_KEY_OFFSET (INFO->current_ih) > filepos + 1)
+      || UI_COMPARE((unsigned)(IH_KEY_OFFSET (INFO->current_ih)), >, filepos + 1))
     {
       search_stat (INFO->fileinfo.k_dir_id, INFO->fileinfo.k_objectid);
       goto get_next_key;
@@ -923,7 +923,7 @@ reiserfs_read (char *buf, int len)
 		  offset, blocksize);
 #endif /* REISERDEBUG */
 	  to_read = blocksize - offset;
-	  if (to_read > len)
+	  if (UI_COMPARE(to_read, >, len))
 	    to_read = len;
 	  
 	  if (disk_read_hook != NULL)
@@ -954,7 +954,7 @@ reiserfs_read (char *buf, int len)
 	      int blk_offset = offset & (INFO->blocksize-1);
 	      
 	      to_read = INFO->blocksize - blk_offset;
-	      if (to_read > len)
+	      if (UI_COMPARE(to_read, >, len))
 		to_read = len;
 	      
 	      disk_read_func = disk_read_hook;
@@ -1042,7 +1042,7 @@ reiserfs_dir (char *dirname)
 	  while (dirname[len] && !isspace (dirname[len]))
 	    len++;
 
-	  if (filemax + len > sizeof (linkbuf) - 1)
+	  if (IU_COMPARE(filemax + len, >, sizeof (linkbuf) - 1))
 	    {
 	      errnum = ERR_FILELENGTH;
 	      return 0;

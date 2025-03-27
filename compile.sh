@@ -1,8 +1,8 @@
 #! /bin/sh --
 # by pts@fazekas.hu at Wed Mar 26 00:07:54 CET 2025
 #
-# !! fix: remaining instances of -Wsign-compare
 # !! fix: with a multiboot kernel, only , bss=... is displayed (line too long?)
+# !! fix all warnings with -fbuiltin; does -fbuiltin makes it smaller?
 #
 
 test "$0" = "${0%/*}" || cd "${0%/*}"

@@ -432,11 +432,11 @@ struct ocg
  */
 #define blksize(fs, ip, lbn) \
 	(((lbn) >= NDADDR || (ip)->i_size >= ((lbn) + 1) << (fs)->fs_bshift) \
-	    ? (fs)->fs_bsize \
+	    ? (unsigned)(fs)->fs_bsize \
 	    : (fragroundup(fs, blkoff(fs, (ip)->i_size))))
 #define dblksize(fs, dip, lbn) \
 	(((lbn) >= NDADDR || (dip)->di_size >= ((lbn) + 1) << (fs)->fs_bshift) \
-	    ? (fs)->fs_bsize \
+	    ? (unsigned)(fs)->fs_bsize \
 	    : (fragroundup(fs, blkoff(fs, (dip)->di_size))))
 
 /*

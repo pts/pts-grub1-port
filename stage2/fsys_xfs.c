@@ -488,7 +488,7 @@ xfs_read (char *buf, int len)
 	xad_t *xad;
 	xfs_fileoff_t endofprev, endofcur, offset;
 	xfs_filblks_t xadlen;
-	int toread, startpos, endpos;
+	unsigned toread, startpos, endpos;
 
 	if (icore.di_format == XFS_DINODE_FMT_LOCAL) {
 		grub_memmove (buf, inode->di_u.di_c + filepos, len);
@@ -506,7 +506,7 @@ xfs_read (char *buf, int len)
 		if (isinxt (filepos >> xfs.blklog, offset, xadlen)) {
 			endofcur = (offset + xadlen) << xfs.blklog; 
 			toread = (endofcur >= endpos)
-				  ? len : (endofcur - filepos);
+				  ? (unsigned)len : (endofcur - filepos);
 
 			disk_read_func = disk_read_hook;
 			devread (fsb2daddr (xad->start),
@@ -518,7 +518,7 @@ xfs_read (char *buf, int len)
 			filepos += toread;
 		} else if (offset > endofprev) {
 			toread = ((offset << xfs.blklog) >= endpos)
-				  ? len : ((offset - endofprev) << xfs.blklog);
+				  ? (unsigned)len : ((offset - endofprev) << xfs.blklog);
 			len -= toread;
 			filepos += toread;
 			for (; toread; toread--) {

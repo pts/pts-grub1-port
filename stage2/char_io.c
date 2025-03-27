@@ -917,7 +917,7 @@ safe_parse_maxint (char **str_ptr, int *myint_ptr)
 	}
 
       found = 1;
-      if (myint > ((MAXINT - digit) / mult))
+      if (IU_COMPARE(myint, >, ((MAXINT - digit) / (unsigned)mult)))
 	{
 	  errnum = ERR_NUMBER_OVERFLOW;
 	  return 0;

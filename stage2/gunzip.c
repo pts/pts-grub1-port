@@ -631,7 +631,7 @@ huft_build (unsigned *b,	/* code lengths in bits (all assumed <= BMAX) */
 	      w += l;		/* previous table always l bits */
 
 	      /* compute minimum size table less than or equal to l bits */
-	      z = (z = g - w) > (unsigned) l ? l : z;	/* upper limit on table size */
+	      z = (z = g - w) > (unsigned) l ? (unsigned) l : z;	/* upper limit on table size */
 	      if ((f = 1 << (j = k - w)) > a + 1)	/* try a k-w bit table */
 		{		/* too few codes for k-w bit table */
 		  f -= a + 1;	/* deduct codes from patterns left */
@@ -862,7 +862,7 @@ init_stored_block (void)
   block_len = ((unsigned) b & 0xffff);
   DUMPBITS (16);
   NEEDBITS (16);
-  if (block_len != (unsigned) ((~b) & 0xffff))
+  if (IU_COMPARE(block_len, !=, (unsigned) ((~b) & 0xffff)))
     errnum = ERR_BAD_GZIP_DATA;
   DUMPBITS (16);
 

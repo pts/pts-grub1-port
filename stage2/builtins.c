@@ -1375,7 +1375,7 @@ embed_func (char *arg, int flags)
 
       /* Check if the disk can store the Stage 1.5.  */
       for (i = 0; i < 4; i++)
-	if (PC_SLICE_TYPE (mbr, i) && PC_SLICE_START (mbr, i) - 1 < size)
+	if (PC_SLICE_TYPE (mbr, i) && UI_COMPARE((unsigned)(PC_SLICE_START (mbr, i) - 1), <, size))
 	  {
 	    errnum = ERR_NO_DISK_SPACE;
 	    return 1;
@@ -2157,7 +2157,7 @@ install_func (char *arg, int flags)
       last_length = length;
 
       if (*((unsigned long *) (installlist - 4))
-	  + *((unsigned short *) installlist) != sector
+	  + UI_COMPARE((unsigned)*((unsigned short *) installlist), !=, sector)
 	  || installlist == (int) stage2_first_buffer + SECTOR_SIZE + 4)
 	{
 	  installlist -= 8;
@@ -2427,7 +2427,7 @@ install_func (char *arg, int flags)
 	      real_config = ptr;
 	    }
 	  
-	  if (current_drive == src_drive)
+	  if (UI_COMPARE((unsigned)current_drive, ==, src_drive))
 	    {
 	      /* If the drive where the Stage 2 resides is the same as
 		 the one where the Stage 1.5 resides, do not embed the
@@ -3081,7 +3081,7 @@ partnew_func (char *arg, int flags)
   auto void lba_to_chs (int lba, int *cl, int *ch, int *dh);
   void lba_to_chs (int lba, int *cl, int *ch, int *dh)
     {
-      int cylinder, head, sector;
+      unsigned cylinder, head, sector;
 
       sector = lba % buf_geom.sectors + 1;
       head = (lba / buf_geom.sectors) % buf_geom.heads;
@@ -3143,7 +3143,7 @@ partnew_func (char *arg, int flags)
     return 1;
 
   /* Check if the new partition will fit in the disk.  */
-  if (new_start + new_len > buf_geom.total_sectors)
+  if (IU_COMPARE(new_start + new_len, >, (unsigned)buf_geom.total_sectors))
     {
       errnum = ERR_GEOM;
       return 1;
@@ -3822,7 +3822,7 @@ savedefault_helper (char *arg, int flags)
       grub_memset (buf, '\n', sizeof (buf));
       grub_sprintf (buf, "%d", entryno);
       
-      if (saved_lengths[0] < sizeof (buf))
+      if (IU_COMPARE(saved_lengths[0], <, sizeof (buf)))
 	{
 	  /* The file is anchored to another file and the first few bytes
 	     are spanned in two sectors. Uggh...  */
@@ -4132,7 +4132,7 @@ setkey_func (char *arg, int flags)
     {
       int i;
 
-      for (i = 0; i < sizeof (keysym_table) / sizeof (keysym_table[0]); i++)
+      for (i = 0; IU_COMPARE(i, <, sizeof (keysym_table) / sizeof (keysym_table[0])); i++)
 	{
 	  if (keysym_table[i].unshifted_name &&
 	      grub_strcmp (key, keysym_table[i].unshifted_name) == 0)
@@ -4149,7 +4149,7 @@ setkey_func (char *arg, int flags)
     {
       int i;
       
-      for (i = 0; i < sizeof (keysym_table) / sizeof (keysym_table[0]); i++)
+      for (i = 0; IU_COMPARE(i, <, sizeof (keysym_table) / sizeof (keysym_table[0])); i++)
 	{
 	  if (keysym_table[i].unshifted_name &&
 	      grub_strcmp (key, keysym_table[i].unshifted_name) == 0)
@@ -4829,7 +4829,7 @@ terminfo_func (char *arg, int flags)
 	      
 	  nul_terminate (arg);
 	  
-	  for (i = 0; i < sizeof (options) / sizeof (options[0]); i++)
+	  for (i = 0; IU_COMPARE(i, <, sizeof (options) / sizeof (options[0])); i++)
 	    {
 	      const char *name = options[i].name;
 	      int len = grub_strlen (name);

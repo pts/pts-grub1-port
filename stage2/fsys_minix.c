@@ -369,7 +369,7 @@ minix_dir (char *dirname)
 
 	  /* Get the symlink size. */
 	  filemax = (INODE->i_size);
-	  if (filemax + len > sizeof (linkbuf) - 2)
+	  if (IU_COMPARE(filemax + len, >, sizeof (linkbuf) - 2))
 	    {
 	      errnum = ERR_FILELENGTH;
 	      return 0;
@@ -455,7 +455,7 @@ minix_dir (char *dirname)
 
 	  /* if our location/byte offset into the directory exceeds the size,
 	     give up */
-	  if (loc >= INODE->i_size)
+	  if (IU_COMPARE(loc, >=, INODE->i_size))
 	    {
 	      if (print_possibilities < 0)
 		{

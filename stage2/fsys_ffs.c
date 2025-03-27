@@ -146,11 +146,12 @@ ffs_read (char *buf, int len)
 {
   int logno, off, size, map, ret = 0;
   
+  
   while (len && !errnum)
     {
       off = blkoff (SUPERBLOCK, filepos);
       logno = lblkno (SUPERBLOCK, filepos);
-      size = blksize (SUPERBLOCK, INODE, logno);
+      size = blksize (SUPERBLOCK, INODE, (unsigned)logno);
 
       if ((map = block_map (logno)) < 0)
 	break;
@@ -234,7 +235,7 @@ loop:
 
   do
     {
-      if (loc >= INODE->i_size)
+      if (IU_COMPARE(loc, >=, INODE->i_size))
 	{
 #if 0
 	  putchar ('\n');
@@ -254,7 +255,7 @@ loop:
 
 	  if ((map = block_map (block)) < 0
 	      || !devread (fsbtodb (SUPERBLOCK, map), 0,
-			   blksize (SUPERBLOCK, INODE, block),
+			   blksize (SUPERBLOCK, INODE, (unsigned)block),
 			   (char *) FSYS_BUF))
 	    {
 	      errnum = ERR_FSYS_CORRUPT;

@@ -93,13 +93,13 @@ vstafs_nextdir (void)
   if (current_direntry > 15)
     {
       current_direntry = 0;
-      if (++current_blockpos > (ax[curr_ext].a_len - 1))
+      if (IU_COMPARE(++current_blockpos, >, (unsigned)(ax[curr_ext].a_len - 1)))
 	{
 	  current_blockpos = 0;
 	  curr_ext++;
 	}
       
-      if (curr_ext < FILE_INFO->extents)
+      if (IU_COMPARE(curr_ext, <, FILE_INFO->extents))
 	{
 	  devread (ax[curr_ext].a_start + current_blockpos, 0,
 		   512, (char *) DIRECTORY_BUF);
@@ -199,7 +199,7 @@ vstafs_read (char *addr, int len)
   
   if (filepos > 0)
     {
-      if (filepos < a[0].a_len * 512 - VSTAFS_START_DATA)
+      if (IU_COMPARE(filepos, <, (unsigned)(a[0].a_len * 512 - VSTAFS_START_DATA)))
 	{
 	  offset = filepos + VSTAFS_START_DATA;
 	  extent = 0;
@@ -216,7 +216,8 @@ vstafs_read (char *addr, int len)
 	      offset -= ext_size;
 	      ext_size = a[extent+1].a_len * 512;
 	    }
-	  while (extent < FILE_INFO->extents && offset>ext_size);
+	  while (1U  /* extent */ < FILE_INFO->extents &&
+	         offset > ext_size);
 	}
     }
   else
@@ -231,7 +232,7 @@ vstafs_read (char *addr, int len)
     curr_len = len;
   
   for (extent_ext=extent;
-       extent_ext < FILE_INFO->extents;
+       IU_COMPARE(extent_ext, <, (unsigned)FILE_INFO->extents);
        curr_len = a[extent_ext].a_len * 512, curr_pos += curr_len, extent_ext++)
     {
       ret += curr_len;

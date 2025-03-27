@@ -92,7 +92,7 @@ ufs2_mount (void)
     {
       for (i = 0; sblock_try[i] != -1; ++i)
 	{
-	  if (! (part_length < (sblock_try[i] + (SBLOCKSIZE / DEV_BSIZE))
+	  if (! (UI_COMPARE((unsigned)part_length, <, (sblock_try[i] + (SBLOCKSIZE / DEV_BSIZE)))
 		 || ! devread (0, sblock_try[i], SBLOCKSIZE, (char *) SUPERBLOCK)))
 	    {
 	      if (SUPERBLOCK->fs_magic == FS_UFS2_MAGIC /* &&
@@ -175,7 +175,7 @@ ufs2_read (char *buf, int len)
     {
       off = blkoff (SUPERBLOCK, filepos);
       logno = lblkno (SUPERBLOCK, filepos);
-      size = blksize (SUPERBLOCK, INODE_UFS2, logno);
+      size = blksize (SUPERBLOCK, INODE_UFS2, (unsigned)logno);
 
       if ((map = block_map (logno)) < 0)
 	break; 
@@ -259,7 +259,7 @@ loop:
 
   do
     {
-      if (loc >= INODE_UFS2->di_size)
+      if (IU_COMPARE(loc, >=, (unsigned)INODE_UFS2->di_size))
 	{
 	  if (print_possibilities < 0)
 	    return 1;
@@ -275,7 +275,7 @@ loop:
 
 	  if ((map = block_map (block)) < 0
 	      || !devread (fsbtodb (SUPERBLOCK, map), 0,
-			   blksize (SUPERBLOCK, INODE_UFS2, block),
+			   blksize (SUPERBLOCK, INODE_UFS2, (unsigned)block),
 			   (char *) FSYS_BUF))
 	    {
 	      errnum = ERR_FSYS_CORRUPT;

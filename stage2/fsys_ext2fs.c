@@ -378,7 +378,7 @@ ext4_recurse_extent_index(struct ext4_extent_header *extent_block, int logical_b
     return extent_block;
   for (i = 0; i < extent_block->eh_entries; i++)
     {
-      if (logical_block < index[i].ei_block)
+      if (IU_COMPARE(logical_block, <, index[i].ei_block))
         break;
     }
   if (i == 0 || !ext2_rdfsb(index[i-1].ei_leaf, DATABLOCK1))
@@ -429,7 +429,7 @@ ext2fs_block_map (int logical_block)
       /* else */
       logical_block -= EXT2_NDIR_BLOCKS;
       /* try the indirect block */
-      if (logical_block < EXT2_ADDR_PER_BLOCK (SUPERBLOCK))
+      if (IU_COMPARE(logical_block, <, EXT2_ADDR_PER_BLOCK (SUPERBLOCK)))
         {
           if (mapblock1 != 1 && !ext2_rdfsb (INODE->i_block[EXT2_IND_BLOCK], DATABLOCK1))
             {
@@ -507,7 +507,9 @@ ext2fs_block_map (int logical_block)
         }
       for (i = 0; i<extent_hdr->eh_entries; i++)
         {
-          if (extent[i].ee_block <= logical_block && logical_block < extent[i].ee_block + extent[i].ee_len && !(extent[i].ee_len>>15))
+          if (UI_COMPARE(extent[i].ee_block, <=, logical_block) &&
+              IU_COMPARE(logical_block, <, extent[i].ee_block + extent[i].ee_len) &&
+              !(extent[i].ee_len>>15))
             return (logical_block - extent[i].ee_block + extent[i].ee_start);
         }
       /* We should not arrive here */
@@ -615,7 +617,7 @@ int ext2_is_fast_symlink (void)
 {
   int ea_blocks;
   ea_blocks = INODE->i_file_acl ? EXT2_BLOCK_SIZE (SUPERBLOCK) / DEV_BSIZE : 0;
-  return INODE->i_blocks == ea_blocks;
+  return UI_COMPARE(INODE->i_blocks, ==, ea_blocks);
 }
 
 /* preconditions: ext2fs_mount already executed, therefore supblk in buffer
@@ -747,7 +749,7 @@ ext2fs_dir (char *dirname)
 
 	  /* Get the symlink size. */
 	  filemax = (INODE->i_size);
-	  if (filemax + len > sizeof (linkbuf) - 2)
+	  if (IU_COMPARE(filemax + len, >, sizeof (linkbuf) - 2))
 	    {
 	      errnum = ERR_FILELENGTH;
 	      return 0;
@@ -843,7 +845,7 @@ ext2fs_dir (char *dirname)
 
 	  /* if our location/byte offset into the directory exceeds the size,
 	     give up */
-	  if (loc >= INODE->i_size)
+	  if (IU_COMPARE(loc, >=, INODE->i_size))
 	    {
 	      if (print_possibilities < 0)
 		{

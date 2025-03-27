@@ -145,8 +145,8 @@ serial_hw_init (unsigned short port, unsigned int speed,
   outb (port + UART_LCR, UART_DLAB);
   
   /* Set the baud rate.  */
-  for (i = 0; i < sizeof (divisor_tab) / sizeof (divisor_tab[0]); i++)
-    if (divisor_tab[i].speed == speed)
+  for (i = 0; IU_COMPARE(i, <, sizeof (divisor_tab) / sizeof (divisor_tab[0])); i++)
+    if (IU_COMPARE(divisor_tab[i].speed, ==, speed))
       {
 	div = divisor_tab[i].div;
 	break;
@@ -233,7 +233,7 @@ serial_translate_key_sequence (void)
       int i;
 
       for (i = 0;
-	   i < sizeof (three_code_table) / sizeof (three_code_table[0]);
+	   IU_COMPARE(i, <, sizeof (three_code_table) / sizeof (three_code_table[0]));
 	   i++)
 	if (three_code_table[i].key == input_buf[2])
 	  {
@@ -250,7 +250,7 @@ serial_translate_key_sequence (void)
       short key = *((short *) (input_buf + 2));
 
       for (i = 0;
-	   i < sizeof (four_code_table) / sizeof (four_code_table[0]);
+	   IU_COMPARE(i, <, sizeof (four_code_table) / sizeof (four_code_table[0]));
 	   i++)
 	if (four_code_table[i].key == key)
 	  {
@@ -267,7 +267,7 @@ int fill_input_buf (int nowait)
 {
   int i;
 
-  for (i = 0; i < 10000 && npending < sizeof (input_buf); i++)
+  for (i = 0; i < 10000 && IU_COMPARE(npending, <, sizeof (input_buf)); i++)
     {
       int c;
 
