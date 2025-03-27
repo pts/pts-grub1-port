@@ -1887,3 +1887,16 @@ grub_close (void)
   if (fsys_table[fsys_type].close_func != 0)
     (*(fsys_table[fsys_type].close_func)) ();
 }
+
+int need_check_slice_type(void) {
+  /* For e.g. (fd1), current_drive == 1 && current_slice == 1, so we return
+   * false here. That's intentional, and it makes filesystems starting at
+   * the beginning of the floppy work.
+   *
+   * For e.g. (hd3): current_drive == 0x80 && current_partition == 0xffffff
+   * && current_slice == 0, so we return false here. That's also
+   * intentional, and it makes filesystems starting directly at the
+   * beginning of the HDD (without a partition) work.
+   */
+  return ((current_drive & 0x80) && current_partition != 0xffffff) || (current_slice != 0);
+}

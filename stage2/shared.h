@@ -1020,6 +1020,11 @@ int check_password(char *entered, char* expected, password_t type);
 
 void init_bios_info (void);
 
+/* Return bool indicating whether the *_mount(...) functions should check
+ * the partition type (i.e. slice type).
+ */
+int need_check_slice_type(void);
+
 #endif /* ASM_FILE */
 
 #endif /* ! GRUB_SHARED_HEADER */

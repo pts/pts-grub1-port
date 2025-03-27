@@ -68,13 +68,13 @@ fat_mount (void)
 {
   struct fat_bpb bpb;
   __u32 magic, first_fat;
-  
+
   /* Check partition type for harddisk */
-  if (((current_drive & 0x80) || (current_slice != 0))
+  if (need_check_slice_type()
       && ! IS_PC_SLICE_TYPE_FAT (current_slice)
       && (! IS_PC_SLICE_TYPE_BSD_WITH_FS (current_slice, FS_MSDOS)))
     return 0;
-  
+
   /* Read bpb */
   if (! devread (0, 0, sizeof (bpb), (char *) &bpb))
     return 0;

@@ -82,7 +82,7 @@ ffs_mount (void)
 {
   int retval = 1;
 
-  if ((((current_drive & 0x80) || (current_slice != 0))
+  if ((need_check_slice_type()
        && ! IS_PC_SLICE_TYPE_BSD_WITH_FS (current_slice, FS_BSDFFS))
       || part_length < (SBLOCK + (SBSIZE / DEV_BSIZE))
       || !devread (SBLOCK, 0, SBSIZE, (char *) SUPERBLOCK)
