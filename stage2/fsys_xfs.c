@@ -102,7 +102,7 @@ le16 (xfs_uint16_t x)
 {
 	__asm__("xchgb %b0,%h0"	\
 		: "=q" (x) \
-		:  "0" (x)); \
+		:  "0" (x) : "cc"); \
 		return x;
 }
 
@@ -117,7 +117,7 @@ le32 (xfs_uint32_t x)
 	__asm__("xchgb %b0, %h0" \
 		"\n\troll $16, %0" \
 		"\n\txchgb %b0, %h0" \
-		: "=q" (x) : "0" (x));
+		: "=q" (x) : "0" (x) : "cc");
 #endif
 	return x;
 }
@@ -125,7 +125,7 @@ le32 (xfs_uint32_t x)
 static inline xfs_uint64_t
 le64 (xfs_uint64_t x)
 {
-        __asm__("xchgb %%al, %%ah; roll $16, %%eax; xchgb %%al, %%ah; xchgl %%eax, %%edx; xchgb %%al, %%ah; roll $16, %%eax; xchgb %%al, %%ah" : "=A" (x) : "0" (x) : "cc");
+        __asm__("xchgb %%al, %%ah\nroll $16, %%eax\nxchgb %%al, %%ah\nxchgl %%eax, %%edx\nxchgb %%al, %%ah\nroll $16, %%eax\nxchgb %%al, %%ah" : "=A" (x) : "0" (x) : "cc");
         return x;
 }
 
