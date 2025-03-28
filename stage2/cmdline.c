@@ -130,6 +130,7 @@ enter_cmdline (char *heap, int forever)
   grub_putchar ('\n');
 #endif
   print_cmdline_message (forever);
+  setcursor(1);  /* Without this, the cursor wouldn't be visible when pressing 'c' from the menu, then running the boot command. */
   
   while (1)
     {
