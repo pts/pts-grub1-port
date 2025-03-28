@@ -773,37 +773,36 @@ int13_handler_end:
 	
 	
 /*
- * chain_stage1(segment, offset, part_table_addr)
+ * chainloader_boot(drive, part_table_addr)
  *
  *  This starts another stage1 loader, at segment:offset.
  */
 
-ENTRY(chain_stage1)
+ENTRY(chainloader_boot)
 	/* no need to save anything, just use %esp */
 
-	/* store %ESI, presuming %ES is 0 */
-	movl	0xc(%esp), %esi
+	/* remember part_table_addr in %EBX (proto_to_real_chainloader will copy it to %ESI), presuming %ES is 0. part_table_addr is near BOOT_PART_TABLE, which is near 0x7be. We won't overwrite it below. */
+	movl	8(%esp), %ebx
+	/* remember boot drive in %DL */
+	movb	4(%esp), %dl
 
-	/* store new offset */
-	movl	0x8(%esp), %eax
-	movl	%eax, offset
+	movl	$BOOTSEC_LOCATION, %esp  /* 0x7c00. The normal stack would overlap the boot code. */
 
-	/* store new segment */
-	movw	0x4(%esp), %ax
-	movw	%ax, segment
+	movl	$prot_to_real_chainloader, %esi
+	movl	$CHAINLOADER_TRAMPOLINE_ADDR, %edi
+	pushl	%edi
+	movl	$[(gateA20_in_real_end-prot_to_real_chainloader+3)>>2], %ecx
+	rep
+	movsl  /* Copy prot_to_real_chainloader code to the early location not overwritten by the big copy below. */
 
-	/* set up to pass boot drive */
-	movb	EXT_C(boot_drive), %dl
+	movl	$LINUX_BZIMAGE_ADDR, %esi
+	leal	4(%esp), %edi
+	movl	linux_text_len, %ecx
+	addl	$3, %ecx
+	shrl	$2, %ecx
+	/* `rep movsl' will be done by prot_to_real_chainloader. */
 
-	call	EXT_C(prot_to_real)
-	.code16
-
-#ifdef ABSOLUTE_WITHOUT_ASTERISK
-	DATA32	ADDR32	ljmp	(offset)
-#else
-	DATA32	ADDR32	ljmp	*(offset)
-#endif
-	.code32
+	ret  /* Jump to the copy of prot_to_real_chainloader. Don't return. */
 #endif /* STAGE1_5 */
 
 
@@ -872,7 +871,7 @@ ENTRY(real_to_prot)
 
 	/* turn on protected mode */
 	movl	%cr0, %eax
-	orl	$CR0_PE_ON, %eax
+	orb	$CR0_PE_ON, %al
 	movl	%eax, %cr0
 
 	/* jump to relocation, flush prefetch queue, and reload %cs */
@@ -912,6 +911,134 @@ protcseg:
 	/* return on the old (or initialized) stack! */
 	ret
 
+/* --- Chainloader trampoline.
+ *
+ * chainloader_boot will copy the code below to CHAINLOADER_TRAMPOLINE_ADDR
+ * and execute it from there. CHAINLOADER_TRAMPOLINE_ADDR is a place in
+ * memory which the copying of the boot code (`rep movsl' below) doesn't
+ * overwrite.
+ */
+
+#ifndef STAGE1_5
+/* Will be copied to 0:CHAINLOADER_TRAMPOLINE_ADDR. */
+/* Put this close to prot_to_real, for better compressibility. */
+ENTRY(prot_to_real_chainloader)
+	rep
+	movsl  /* Copy the boot code to 0x7c00. */
+	lgdt	(gdtdesc_chainloader-prot_to_real_chainloader+CHAINLOADER_TRAMPOLINE_ADDR)  /* We must set this because the previous GDT (set up by gdtesc) has been overwritten by the `rep movsl' above. */
+	ljmp	$8, $tmpcseg_c-prot_to_real_chainloader+CHAINLOADER_TRAMPOLINE_ADDR	/* jump to a 16 bit segment */
+tmpcseg_c:
+	.code16
+	movl	%cr0, %eax
+	andb 	$CR0_PE_OFF, %al
+	movl	%eax, %cr0
+	ljmp	$0, $realcseg_c-prot_to_real_chainloader+CHAINLOADER_TRAMPOLINE_ADDR  /* flush prefetch queue, reload %cs */
+realcseg_c:  /* we are in real mode now */
+	xorl	%eax, %eax  /* !! Just %ax. */
+	movw	%ax, %ds
+	movw	%ax, %es
+	movw	%ax, %fs
+	movw	%ax, %gs
+	movw	%ax, %ss
+	sti
+	push	%dx  /* Save BIOS drive number in DL. */
+	mov	$0, %al
+	call	gateA20_in_real  /* This has also been copied to the trampoline at CHAINLOADER_TRAMPOLINE_ADDR. */
+	pop	%dx  /* Restore BIOS drive number to DL. */
+	ljmp	$0, $BOOTSEC_LOCATION
+	.code32
+
+gdt_chainloader:
+	/* 16 bit real mode CS */
+	.word	0xFFFF, 0
+	.byte	0, 0x9E, 0, 0
+gdtdesc_chainloader:
+	.word	0xf			/* limit */
+	.long	gdt_chainloader-prot_to_real_chainloader+CHAINLOADER_TRAMPOLINE_ADDR-8	/* addr */
+#endif /* STAGE1_5 */
+
+/* Enables (%AL == 1) or disables (%AL == 0) the A20 gate.
+ * Ruins %AX, %DX.
+ * Can be called in real mode only.
+ */
+gateA20_in_real:
+	.code16
+	/* first, try the BIOS call */
+	movb	$0x24, %ah
+	pushw	%ax
+	stc
+	int	$0x15
+	popw	%dx
+	jc	3f  /* Jump on failure. */
+	testb	%ah, %ah
+	jne 	3f  /* Jump on failure. */
+	ret
+
+3:	/* try to switch gateA20 using PORT92, the "Fast A20 and Init" register */
+	movb	%dl, %ah
+	movw	$0x92, %dx
+	inb	%dx, %al  /* This always overwrites the previous value of %AL. https://stackoverflow.com/q/79540330 */
+	cmpb	$0xff, %al
+	je	6f  /* skip the port92 code if it's unimplemented (read returns 0xff) */
+
+	or	$2, %al  /* Set the ALT_A20_GATE bit. */
+	testb	%ah, %ah
+	jnz	4f
+	andb	$~2, %al  /* Clear the ALT_A20_GATE bit. */
+4:	andb	$~1, %al  /* Clear the INIT_NOW bit, so that we don't accidently reset the machine. */
+	outb	%al, %dx
+
+6:	/* use keyboard controller !!! test this */
+	call    gloop1
+
+	movb	$KC_CMD_WOUT, %al
+	outb	$K_CMD
+
+gloopint1:
+	inb	$K_STATUS
+	cmpb	$0xff, %al
+	jz	gloopint1_done
+	andb	$K_IBUF_FUL, %al
+	jnz	gloopint1
+
+gloopint1_done:
+	movb	$KB_OUTPUT_MASK, %al
+	test	%ah, %ah
+	jz	gdoit
+
+	orb	$KB_A20_ENABLE, %al
+gdoit:
+	outb	$K_RDWR
+
+	call	gloop1
+
+	/* output a dummy command (USB keyboard hack) */
+	movb	$0xff, %al
+	outb	$K_CMD
+	call	gloop1
+
+	ret
+
+gloop1:
+	inb	$K_STATUS
+	cmpb	$0xff, %al
+	jz	gloop2ret
+	andb	$K_IBUF_FUL, %al
+	jnz	gloop1
+
+gloop2:
+	inb	$K_STATUS
+	andb	$K_OBUF_FUL, %al
+	jz	gloop2ret
+	inb	$K_RDWR
+	jmp	gloop2
+
+gloop2ret:
+	ret
+gateA20_in_real_end:
+	.code32
+
+/* --- End of the chainloader trampoline. */
 
 ENTRY(prot_to_real)
 	/* just in case, set GDT */
@@ -946,7 +1073,7 @@ tmpcseg:
 
 	/* clear the PE bit of CR0 */
 	movl	%cr0, %eax
-	andl 	$CR0_PE_OFF, %eax
+	andb 	$CR0_PE_OFF, %al
 	movl	%eax, %cr0
 
 	/* flush prefetch queue, reload %cs */
@@ -1659,108 +1786,17 @@ ENTRY(set_vbe_mode)
  */
 
 ENTRY(gateA20)
-	/* first, try a BIOS call */
-	pushl	%ebp
-	movl	8(%esp), %edx
-	
-	call	EXT_C(prot_to_real)
-	
+	movl	4(%esp), %ecx
+	cmpl	$1, %ecx
+	sbbl	%ecx, %ecx
+	inc	%ecx  /* %ECX := 0 if linear is 0, 1 otherwise. */
+	call	EXT_C(prot_to_real)  /* This ruins %EAX, so prepare the argument in %ECX above. */
 	.code16
-	movw	$0x2400, %ax
-	testw	%dx, %dx
-	jz	1f
-	incw	%ax
-1:	stc
-	int	$0x15
-	jnc	2f
-
-	/* set non-zero if failed */
-	movb	$1, %ah
-
-	/* save the status */
-2:	movb	%ah, %dl
-
+	xchgw	%ax, %cx  /* %AX := %CX; %CX := junk. */
+	call	gateA20_in_real
 	DATA32	call	EXT_C(real_to_prot)
 	.code32
-
-	popl	%ebp
-	testb	%dl, %dl
-	jnz	3f
 	ret
-
-3:	/*
-	 * try to switch gateA20 using PORT92, the "Fast A20 and Init"
-	 * register
-	*/
-	mov $0x92, %dx
-	inb %dx, %al
-	/* skip the port92 code if it's unimplemented (read returns 0xff) */
-	cmpb $0xff, %al
-	jz 6f
-	
-	/* set or clear bit1, the ALT_A20_GATE bit */
-	movb 4(%esp), %ah
-	testb %ah, %ah
-	jz 4f
-	orb $2, %al
-	jmp 5f
-4:	and $0xfd, %al
-	
-	/* clear the INIT_NOW bit don't accidently reset the machine */
-5:	and $0xfe, %al
-	outb %al, %dx
-	
-6:	/* use keyboard controller */
-	pushl	%eax
-
-	call    gloop1
-
-	movb	$KC_CMD_WOUT, %al
-	outb	$K_CMD
-
-gloopint1:
-	inb	$K_STATUS
-	cmpb	$0xff, %al
-	jz	gloopint1_done
-	andb	$K_IBUF_FUL, %al
-	jnz	gloopint1
-
-gloopint1_done:	
-	movb	$KB_OUTPUT_MASK, %al
-	cmpb	$0, 0x8(%esp)
-	jz	gdoit
-
-	orb	$KB_A20_ENABLE, %al
-gdoit:
-	outb	$K_RDWR
-
-	call	gloop1
-
-	/* output a dummy command (USB keyboard hack) */
-	movb	$0xff, %al
-	outb	$K_CMD
-	call	gloop1
-	
-	popl	%eax
-	ret
-
-gloop1:
-	inb	$K_STATUS
-	cmpb	$0xff, %al
-	jz	gloop2ret
-	andb	$K_IBUF_FUL, %al
-	jnz	gloop1
-
-gloop2:
-	inb	$K_STATUS
-	andb	$K_OBUF_FUL, %al
-	jz	gloop2ret
-	inb	$K_RDWR
-	jmp	gloop2
-
-gloop2ret:
-	ret
-
 
 ENTRY(patch_code)	/* labels start with "pc_" */
 	.code16

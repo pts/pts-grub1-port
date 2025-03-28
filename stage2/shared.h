@@ -199,6 +199,10 @@ extern char *grub_scratch_mem;
 #define BOOTSEC_SIG_OFFSET		0x1FE
 #define BOOTSEC_LISTSIZE		8
 
+#define CHAINLOADER_MAX_SIZE (0x9a000 - 0x7c00)  /* 585 KiB. There is som BIOS info at linear address 0x9a000. */
+#define CHAINLOADER_TRAMPOLINE_ADDR 0x7a00
+
+
 /* Not bad, perhaps.  */
 #define NETWORK_DRIVE	0x20
 
@@ -743,8 +747,7 @@ extern unsigned short ascii_key_map[];
 extern unsigned short io_map[];
 
 /* calls for direct boot-loader chaining */
-void chain_stage1 (unsigned long segment, unsigned long offset,
-		   unsigned long part_table_addr)
+void chainloader_boot (unsigned long drive, unsigned long part_table_addr)
      __attribute__ ((noreturn));
 void chain_stage2 (unsigned long segment, unsigned long offset,
 		   int second_sector)

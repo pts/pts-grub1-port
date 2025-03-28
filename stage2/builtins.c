@@ -322,9 +322,7 @@ boot_func (char *arg, int flags)
 	  set_int13_handler (bios_drive_map);
 	}
       
-      gateA20 (0);
-      boot_drive = saved_drive;
-      chain_stage1 (0, BOOTSEC_LOCATION, boot_part_addr);
+      chainloader_boot(saved_drive, boot_part_addr);  /* This also disables the A20 gate. */
       break;
 
     case KERNEL_TYPE_MULTIBOOT:
@@ -461,8 +459,8 @@ chainloader_func (char *arg, int flags)
       return 1;
     }
 
-  /* Read the first block.  */
-  if (grub_read ((char *) BOOTSEC_LOCATION, SECTOR_SIZE) != SECTOR_SIZE)
+  /* Read at least 512 bytes (SECTOR_SIZE), at most 585 KiB.  */
+  if ((unsigned)((linux_text_len = grub_read((char*)LINUX_BZIMAGE_ADDR, CHAINLOADER_MAX_SIZE + 1)) - SECTOR_SIZE) > CHAINLOADER_MAX_SIZE - SECTOR_SIZE)
     {
       grub_close ();
       kernel_type = KERNEL_TYPE_NONE;
@@ -477,7 +475,7 @@ chainloader_func (char *arg, int flags)
 
   /* If not loading it forcibly, check for the signature.  */
   if (! force
-      && (*((unsigned short *) (BOOTSEC_LOCATION + BOOTSEC_SIG_OFFSET))
+      && (*((unsigned short *) ((char*)LINUX_BZIMAGE_ADDR + BOOTSEC_SIG_OFFSET))
 	  != BOOTSEC_SIGNATURE))
     {
       grub_close ();
@@ -492,8 +490,7 @@ chainloader_func (char *arg, int flags)
   /* XXX: Windows evil hack. For now, only the first five letters are
      checked.  */
   if (IS_PC_SLICE_TYPE_FAT (current_slice)
-      && ! grub_memcmp ((char *) BOOTSEC_LOCATION + BOOTSEC_BPB_SYSTEM_ID,
-			"MSWIN", 5))
+      && ! grub_memcmp ((char*)LINUX_BZIMAGE_ADDR + BOOTSEC_BPB_SYSTEM_ID, "MSWIN", 5))
     *((unsigned long *) (BOOTSEC_LOCATION + BOOTSEC_BPB_HIDDEN_SECTORS))
       = part_start;
 
