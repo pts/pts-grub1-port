@@ -789,7 +789,7 @@ ENTRY(chainloader_boot)
 	movl	$BOOTSEC_LOCATION, %esp  /* 0x7c00. The normal stack would overlap the boot code. */
 
 	movl	$prot_to_real_chainloader, %esi
-	movl	$CHAINLOADER_TRAMPOLINE_ADDR, %edi
+	movl	$CHAINLOADER_TRAMPOLINE_ADDR, %edi  /* 0x7a00, earlier than the boot code. */
 	pushl	%edi
 	movl	$[(gateA20_in_real_end-prot_to_real_chainloader+3)>>2], %ecx
 	rep
