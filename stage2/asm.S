@@ -2751,7 +2751,7 @@ gdt:
 	.word	0xffff, 0, 0x9300, 0xcf  /* 0x9300 == 0x8000 (P: present) | 0x1000 (S: descriptor type, indicates code or data segment); | 0x200 (RW: read--write, indicates writeable for data segment) | 0x100 (A: accessed). 0xcf == 0x80 (G: granularity 0x1000 bytes) | 0x40 (DB: size 32-bit) | 0xf (high nibble of limit). */
 
 	/* Segment PSEUDO_RM_CSEG == 0x18 descriptor: 16-bit real-mode code segment. */
-	.word	0xffff, 0, 0x9f00, 0  /* 0x9f00 == 0x8000 (P: present) | 0x1000 (S: descriptor type, indicates code or data segment); | 0x800 (E: executable, indicates code segment) | 0x400 (conforming: jump to here OK from lower-privilege) | 0x200 (RW: read--write, indicates readadble for data segment) | 0x100 (A: accessed). 0 == 0*0x80 (G: granularity 1 byte) | 0*0x40 (DB: size 16-bit) | 0 (high nibble of limit). */
+	.word	0xffff, 0, 0x9b00, 0  /* 0x9b00 == 0x8000 (P: present) | 0x1000 (S: descriptor type, indicates code or data segment); | 0x800 (E: executable, indicates code segment) | 0*0x400 (conforming, not: jump to here not OK from lower-privilege) | 0x200 (RW: read--write, indicates readadble for data segment) | 0x100 (A: accessed). 0 == 0*0x80 (G: granularity 1 byte) | 0*0x40 (DB: size 16-bit) | 0 (high nibble of limit). */
 
 	/* Segment PSEUDO_RM_DSEG == 0x20 descriptor: 16-bit real mode data segment. */
 	.word	0xffff, 0, 0x9300, 0  /* 0x9300 == 0x8000 (P: present) | 0x1000 (S: descriptor type, indicates code or data segment); | 0x200 (RW: read--write, indicates writeable for data segment) | 0x100 (A: accessed). 0 == 0*0x80 (G: granularity 1 byte) | 0*0x40 (DB: size 16-bit) | 0 (high nibble of limit). */
