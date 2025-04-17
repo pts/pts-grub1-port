@@ -926,15 +926,32 @@ ENTRY(prot_to_real_chainloader)
 	rep
 	movsl  /* Copy the boot code to 0x7c00. */
 	lgdt	(gdtdesc_chainloader-prot_to_real_chainloader+CHAINLOADER_TRAMPOLINE_ADDR)  /* We must set this because the previous GDT (set up by gdtesc) has been overwritten by the `rep movsl' above. */
-	ljmp	$8, $tmpcseg_c-prot_to_real_chainloader+CHAINLOADER_TRAMPOLINE_ADDR	/* jump to a 16 bit segment */
+	ljmp	$8, $tmpcseg_c-prot_to_real_chainloader+CHAINLOADER_TRAMPOLINE_ADDR	/* Jump to .tmpcseg_c in segment 8. */
 tmpcseg_c:
 	.code16
 	movl	%cr0, %eax
 	andb 	$CR0_PE_OFF, %al
 	movl	%eax, %cr0
+	xorl	%eax, %eax
+	movb	$0x10, %al  /* EAX := 0x10. Segment 0x10. */
+	/* We use the movws below to copy the limit, the flags (e.g.
+	 * granularity) and the access byte (and also the base) from
+	 * gdt_chainloader to the segment register shadow descriptors. It
+	 * would be too late to copy them in real mode (e.g. after
+	 * realcseg_c), because those movws only update the base.
+	 *
+	 * MS-DOS 7.1 io.sys in QEMU 2.11.1 requires the correct limit,
+	 * flags an access byte values. Without them it hangs the system at
+	 * boot time about 0.1% of the time.
+	 */
+	movw	%ax, %ds
+	movw	%ax, %es
+	movw	%ax, %fs
+	movw	%ax, %gs
+	movw	%ax, %ss
 	ljmp	$0, $realcseg_c-prot_to_real_chainloader+CHAINLOADER_TRAMPOLINE_ADDR  /* flush prefetch queue, reload %cs */
 realcseg_c:  /* we are in real mode now */
-	xorl	%eax, %eax  /* !! Just %ax. */
+	movb	$0, %al  /* EAX := 0. */
 	movw	%ax, %ds
 	movw	%ax, %es
 	movw	%ax, %fs
@@ -949,12 +966,11 @@ realcseg_c:  /* we are in real mode now */
 	.code32
 
 gdt_chainloader:
-	/* 16 bit real mode CS */
-	.word	0xFFFF, 0
-	.byte	0, 0x9E, 0, 0
+	.word	-1, 0, 0x9b00, 0  /* Segment 8 descriptor:  16-bit, code, read-execute, base 0, limit 0xffff, limit granularity 0 (1 byte). Used for switching back to real mode. */
+	.word   -1, 0, 0x9300, 0  /* Segment 0x10 descriptor: 16-bit, data, read-write, base 0, limit 0xffff, limit granularity 0 (1 byte). Used for switching back to real mode. Won't actually be used to reference memory, but its access byte and flags will be reused when back in real mode. */
 gdtdesc_chainloader:
-	.word	0xf			/* limit */
-	.long	gdt_chainloader-prot_to_real_chainloader+CHAINLOADER_TRAMPOLINE_ADDR-8	/* addr */
+	.word	gdtdesc_chainloader-gdt_chainloader+8-1  /* Limit. */
+	.long	gdt_chainloader-8-prot_to_real_chainloader+CHAINLOADER_TRAMPOLINE_ADDR  /* Addr. */
 #endif /* STAGE1_5 */
 
 /* Enables (%AL == 1) or disables (%AL == 0) the A20 gate.
