@@ -2743,27 +2743,19 @@ VARIABLE(apm_bios_info)
 
 	.p2align	2	/* force 4-byte alignment */
 gdt:
-	.word	0, 0
-	.byte	0, 0, 0, 0
+	/* Segment PROT_MODE_CSEG == 8 descriptor: 32-bit code segment. */
+	.word	0xffff, 0, 0x9a00, 0xcf
 
-	/* code segment */
-	.word	0xFFFF, 0
-	.byte	0, 0x9A, 0xCF, 0
+	/* Segment PROT_MODE_DSEG == 0x10 descriptor: 32-bit data segment. */
+	.word	0xffff, 0, 0x9200, 0xcf
 
-	/* data segment */
-	.word	0xFFFF, 0
-	.byte	0, 0x92, 0xCF, 0
+	/* Segment PSEUDO_RM_CSEG == 0x18 descriptor: 16-bit real-mode code segment. */
+	.word	0xffff, 0, 0x9e00, 0
 
-	/* 16 bit real mode CS */
-	.word	0xFFFF, 0
-	.byte	0, 0x9E, 0, 0
-
-	/* 16 bit real mode DS */
-	.word	0xFFFF, 0
-	.byte	0, 0x92, 0, 0
-
+	/* Segment PSEUDO_RM_DSEG == 0x20 descriptor: 16-bit real mode data segment. */
+	.word	0xffff, 0, 0x9200, 0
 
 /* this is the GDT descriptor */
 gdtdesc:
-	.word	0x27			/* limit */
-	.long	gdt			/* addr */
+	.word	gdtdesc-gdt+8-1		/* limit */
+	.long	gdt-8			/* addr */
