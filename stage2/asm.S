@@ -2723,6 +2723,7 @@ VARIABLE(apm_bios_info)
 	
 /*
  * This is the Global Descriptor Table
+ * https://wiki.osdev.org/Global_Descriptor_Table#Segment_Descriptor
  *
  *  An entry, a "Segment Descriptor", looks like this:
  *
@@ -2744,16 +2745,16 @@ VARIABLE(apm_bios_info)
 	.p2align	2	/* force 4-byte alignment */
 gdt:
 	/* Segment PROT_MODE_CSEG == 8 descriptor: 32-bit code segment. */
-	.word	0xffff, 0, 0x9a00, 0xcf
+	.word	0xffff, 0, 0x9a00, 0xcf  /* 0x9a00 == 0x8000 (P: present) | 0x1000 (S: descriptor type, indicates code or data segment); | 0x800 (E: executable, indicates code segment) | 0x200 (RW: read--write, indicates readadble for data segment) | 0*0x100 (A: accessed, not). 0xcf == 0x80 (G: granularity 0x1000 bytes) | 0x40 (DB: size 32-bit) | 0xf (high nibble of limit). */
 
 	/* Segment PROT_MODE_DSEG == 0x10 descriptor: 32-bit data segment. */
-	.word	0xffff, 0, 0x9200, 0xcf
+	.word	0xffff, 0, 0x9200, 0xcf  /* 0x9200 == 0x8000 (P: present) | 0x1000 (S: descriptor type, indicates code or data segment); | 0x200 (RW: read--write, indicates writeable for data segment) | 0*0x100 (A: accessed, not). 0xcf == 0x80 (G: granularity 0x1000 bytes) | 0x40 (DB: size 32-bit) | 0xf (high nibble of limit). */
 
 	/* Segment PSEUDO_RM_CSEG == 0x18 descriptor: 16-bit real-mode code segment. */
-	.word	0xffff, 0, 0x9e00, 0
+	.word	0xffff, 0, 0x9e00, 0  /* 0x9e00 == 0x8000 (P: present) | 0x1000 (S: descriptor type, indicates code or data segment); | 0x800 (E: executable, indicates code segment) | 0x400 (conforming: jump to here OK from lower-privilege) | 0x200 (RW: read--write, indicates readadble for data segment) | 0*0x100 (A: accessed, not). 0 == 0*0x80 (G: granularity 1 byte) | 0*0x40 (DB: size 16-bit) | 0 (high nibble of limit). */
 
 	/* Segment PSEUDO_RM_DSEG == 0x20 descriptor: 16-bit real mode data segment. */
-	.word	0xffff, 0, 0x9200, 0
+	.word	0xffff, 0, 0x9200, 0  /* 0x9200 == 0x8000 (P: present) | 0x1000 (S: descriptor type, indicates code or data segment); | 0x200 (RW: read--write, indicates writeable for data segment) | 0*0x100 (A: accessed, not). 0 == 0*0x80 (G: granularity 1 byte) | 0*0x40 (DB: size 16-bit) | 0 (high nibble of limit). */
 
 /* this is the GDT descriptor */
 gdtdesc:
