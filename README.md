@@ -12,6 +12,12 @@ To build pts-grub1-port, clone the Git repository, and run `./compile.sh`
 User-visible changes to GRUB 0.97-29ubuntu68:
 
 * GRUB can see filesystems at the beginning of a HDD (without a partition).
+* GRUB (just like GRUB4DOS 0.4.4) can boot *chainloader* files longer than
+  512 bytes; the limit is now 585 KiB.
+* GRUB sets the Multiboot v1 boot_device field at *boot* (last minute)
+  to the drive and partition current at *boot* (either by default or set by
+  the most recent *root* command). This matches what *boot* of *chainloader*
+  has been doing.
 * Quiet mode is disabled by default (to match GRUB4DOS 0.4.4).
 * The *quiet* command enables quiet boot mode. (Bugs fixed.)
 * Bugfixes.
