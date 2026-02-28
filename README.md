@@ -49,7 +49,7 @@ pts-grub1-port is based on:
   on 2016-02-07. These patches include filesystem UUID and GPT support.
 * GCC 4.8.5 (on 2015-06-23): *cc1* C compiler programs.
 * GNU Binutils 2.22 and 2.24: *as* assembler and *ld* linker programs.
-* Busybox 1.37: *busybox* program with may tools including *sh*, *cat* and *dd*.
+* Busybox 1.37: *busybox* program with many tools including *sh*, *cat* and *dd*.
 * [sstrip-ml](tools/sstrip-ml-v1.c): a custom ELF-32 program file stripping
   tool. This is used instead of `objcopy -O binary`, because it's much
   smaller.
