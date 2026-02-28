@@ -42,6 +42,7 @@ kernel_t
 load_image (char *kernel, char *arg, kernel_t suggested_type,
 	    unsigned long load_flags)
 {
+  char is_detected_linux, is_detected_bsd_aout, is_detected_elf;
   int len, i, exec_type = 0, align_4k = 1;
   entry_func real_entry_addr = 0;
   kernel_t type = KERNEL_TYPE_NONE;
@@ -66,7 +67,7 @@ load_image (char *kernel, char *arg, kernel_t suggested_type,
   if (!grub_open (kernel))
     return KERNEL_TYPE_NONE;
 
-  if (!(len = grub_read ((char*)buffer, MULTIBOOT_SEARCH)) || len < 32)
+  if (!(len = grub_read ((char*)buffer, MULTIBOOT_SEARCH)) || len <= 32  /* sizeof(struct exec) */)
     {
       grub_close ();
       
@@ -75,6 +76,24 @@ load_image (char *kernel, char *arg, kernel_t suggested_type,
 
       return KERNEL_TYPE_NONE;
     }
+
+  /* Use BUFFER as a linux kernel header, if the image is Linux zImage
+     or bzImage.  */
+  lh = (struct linux_kernel_header *) buffer;
+
+  is_detected_bsd_aout = !N_BADMAG ((*(pu.aout)));
+  is_detected_elf = IU_COMPARE(len, <, sizeof (Elf32_Ehdr)) && BOOTABLE_I386_ELF ((*((Elf32_Ehdr *) buffer)));
+  is_detected_linux = len >= 1024 && lh->boot_flag == BOOTSEC_SIGNATURE && lh->setup_sects <= LINUX_MAX_SETUP_SECTS;
+  if (is_detected_linux &&
+      ((suggested_type == KERNEL_TYPE_LINUX || suggested_type == KERNEL_TYPE_BIG_LINUX)
+#if 0  /* This would prefer Linux to Multiboot if both are present, just as QEMU 2.11.1 does it. However, Multiboot supports passing the BIOS drive number, and Linux doesn't (lh->root_dev could be a workaround), so we prefer Multiboot. */
+       || (suggested_type == KERNEL_TYPE_NONE && !is_detected_bsd_aout && !is_detected_elf &&
+           lh->setup_sects <= 16 &&
+           lh->header == LINUX_MAGIC_SIGNATURE && lh->version >= 0x0200 && lh->version < 0x280)
+#endif
+      )) goto do_linux;
+  if (is_detected_bsd_aout &&
+      ((suggested_type == KERNEL_TYPE_FREEBSD || suggested_type == KERNEL_TYPE_NETBSD))) goto do_bsd_aout;
 
   for (i = 0; i < len; i++)
     {
@@ -93,17 +112,12 @@ load_image (char *kernel, char *arg, kernel_t suggested_type,
 	}
     }
 
-  /* Use BUFFER as a linux kernel header, if the image is Linux zImage
-     or bzImage.  */
-  lh = (struct linux_kernel_header *) buffer;
-  
   /* ELF loading supported if multiboot, FreeBSD and NetBSD.  */
   if (((type == KERNEL_TYPE_MULTIBOOT && ! (flags & MULTIBOOT_AOUT_KLUDGE))
        || pu.elf->e_ident[EI_OSABI] == ELFOSABI_FREEBSD
        || grub_strcmp ((const char *)(pu.elf->e_ident + EI_BRAND), "FreeBSD") == 0
        || suggested_type == KERNEL_TYPE_NETBSD)
-      && IU_COMPARE(len, <, sizeof (Elf32_Ehdr))
-      && BOOTABLE_I386_ELF ((*((Elf32_Ehdr *) buffer))))
+      && is_detected_elf)
     {
       if (type == KERNEL_TYPE_MULTIBOOT)
 	entry_addr = (entry_func) pu.elf->e_entry;
@@ -170,8 +184,9 @@ load_image (char *kernel, char *arg, kernel_t suggested_type,
       exec_type = 2;
       str = "kludge";
     }
-  else if (IU_COMPARE(len, >, sizeof (struct exec)) && !N_BADMAG ((*(pu.aout))))
+  else if (is_detected_bsd_aout)
     {
+    do_bsd_aout:
       entry_addr = (entry_func) pu.aout->a_entry;
 
       if (type == KERNEL_TYPE_NONE)
@@ -217,12 +232,14 @@ load_image (char *kernel, char *arg, kernel_t suggested_type,
       exec_type = 1;
       str = "a.out";
     }
-  else if (lh->boot_flag == BOOTSEC_SIGNATURE
-	   && lh->setup_sects <= LINUX_MAX_SETUP_SECTS)
+  else if (is_detected_linux)
     {
-      int big_linux = 0;
-      int setup_sects = lh->setup_sects;
+      int big_linux;
+      int setup_sects;
 
+    do_linux:
+      big_linux = 0;
+      setup_sects = lh->setup_sects;
       if (lh->header == LINUX_MAGIC_SIGNATURE && lh->version >= 0x0200)
 	{
 	  big_linux = (lh->loadflags & LINUX_FLAG_BIG_KERNEL);
