@@ -575,7 +575,6 @@ typedef enum
 
 extern unsigned long install_partition;
 extern unsigned long boot_drive;
-extern unsigned long install_second_sector;
 extern struct apm_info apm_bios_info;
 extern unsigned long boot_part_addr;
 extern int saved_entryno;

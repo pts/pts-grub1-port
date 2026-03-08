@@ -161,7 +161,7 @@ codestart:
 	 * Save the sector number of the second sector (i.e. this sector)
 	 * in INSTALL_SECOND_SECTOR. See also "stage2/start.S".
 	 */
-	ADDR32	movl	%ebp, EXT_C(install_second_sector)
+	/*ADDR32	movl	%ebp, EXT_C(install_second_sector)*/
 #endif
 	
 	/* set up the real mode/BIOS stack */
@@ -2717,9 +2717,6 @@ VARIABLE(boot_drive)
 	.long	0
 #endif
 
-VARIABLE(install_second_sector)
-	.long	0
-	
 	/* an address can only be long-jumped to if it is in memory, this
 	   is used by multiple routines */
 offset:
