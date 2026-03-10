@@ -1216,3 +1216,20 @@ bsd_boot (kernel_t type, int bootdev, char *arg)
 		     extended_memory, mbi.mem_lower);
     }
 }
+
+void
+set_boot_partition_for_linux_ukh ()
+{
+    struct linux_kernel_header *lh = (struct linux_kernel_header *) (cur_addr - LINUX_SETUP_MOVE_SIZE);
+    if (((unsigned short*)lh)[0x26 >> 1] == 0xfffe && (int) lh->ramdisk_size == -1) {
+	/* UKH (https://github.com/pts/ukh) kernel image detected for
+	 * `kernel --type=linux'. Populate the BIOS boot drive number and
+	 * the partition index.
+	 *
+	 * The condition is not accidentally true for non-UKH kernels,
+	 * because lh->ramdisk_size is typically 0.
+	 */
+	((char*)lh)[0x26] = saved_partition >> 16;  /* Partition number for UKH kernels. */
+	((char*)lh)[0x27] = saved_drive;  /* BIOS boot drive number for UKH kernels. */
+    }
+}

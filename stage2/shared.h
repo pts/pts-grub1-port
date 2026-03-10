@@ -752,6 +752,13 @@ void chain_stage2 (unsigned long segment, unsigned long offset,
 		   int second_sector)
      __attribute__ ((noreturn));
 
+/* Set the BIOS boot drive number and the boot partition number header
+ * fields in an UKH kernel image.
+ *
+ * https://github.com/pts/ukh
+ */
+void set_boot_partition_for_linux_ukh (void);
+
 /* do some funky stuff, then boot linux */
 void linux_boot (void) __attribute__ ((noreturn));
 

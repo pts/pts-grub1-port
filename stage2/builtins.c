@@ -289,6 +289,7 @@ boot_func (char *arg, int flags)
 
     case KERNEL_TYPE_LINUX:
       /* Linux */
+      set_boot_partition_for_linux_ukh ();
       linux_boot ();
       break;
 
