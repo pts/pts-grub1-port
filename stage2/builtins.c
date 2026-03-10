@@ -90,12 +90,12 @@ static unsigned short bios_drive_map[DRIVE_MAP_SIZE + 1];
 
 /* Prototypes for allowing straightfoward calling of builtins functions
    inside other functions.  */
-static int configfile_func (char *arg, int flags);
+static void configfile_func (char *arg, int flags);
 
-static int savedefault_helper (char *arg, int flags);
+static void savedefault_helper (char *arg, int flags);
 
 #if !defined(SUPPORT_DISKLESS) && defined(GRUB_UTIL)
-static int savedefault_shell (char *arg, int flags);
+static void savedefault_shell (char *arg, int flags);
 #endif
 
 /* Initialize the data for builtins.  */
@@ -148,7 +148,7 @@ disk_read_print_func (int sector, int offset, int length)
 
 
 /* blocklist */
-static int
+static void
 blocklist_func (char *arg, int flags)
 {
   char *dummy = (char *) RAW_ADDR (0x100000);
@@ -208,7 +208,7 @@ blocklist_func (char *arg, int flags)
 
   /* Open the file.  */
   if (! grub_open (arg))
-    return 1;
+    return;
 
   /* Print the device name.  */
   grub_printf ("(%cd%d",
@@ -239,7 +239,7 @@ blocklist_func (char *arg, int flags)
  fail:
   disk_read_hook = 0;
   grub_close ();
-  return errnum;
+  return;
 }
 
 static struct builtin builtin_blocklist =
@@ -252,7 +252,7 @@ static struct builtin builtin_blocklist =
 };
 
 /* boot */
-static int
+static void
 boot_func (char *arg, int flags)
 {
   struct term_entry *prev_term = current_term;
@@ -334,7 +334,7 @@ boot_func (char *arg, int flags)
 
     default:
       errnum = ERR_BOOT_COMMAND;
-      return 1;
+      return;
     }
 
   /* if we get back here, we should go back to what our term was before */
@@ -344,7 +344,7 @@ boot_func (char *arg, int flags)
        * it should always work */
       if (current_term->startup() == 0)
           current_term = term_table; /* we know that console is first */
-  return 0;
+  return;
 }
 
 static struct builtin builtin_boot =
@@ -359,7 +359,7 @@ static struct builtin builtin_boot =
 
 #ifdef SUPPORT_NETBOOT
 /* bootp */
-static int
+static void
 bootp_func (char *arg, int flags)
 {
   int with_configfile = 0;
@@ -388,7 +388,7 @@ bootp_func (char *arg, int flags)
   if (with_configfile)
     configfile_func (config_file, flags);
   
-  return 0;
+  return;
 }
 
 static struct builtin builtin_bootp =
@@ -405,14 +405,14 @@ static struct builtin builtin_bootp =
 
 
 /* cat */
-static int
+static void
 cat_func (char *arg, int flags)
 {
   char c;
   (void)flags;
 
   if (! grub_open (arg))
-    return 1;
+    return;
 
   while (grub_read (&c, 1))
     {
@@ -425,7 +425,7 @@ cat_func (char *arg, int flags)
     }
   
   grub_close ();
-  return 0;
+  return;
 }
 
 static struct builtin builtin_cat =
@@ -439,7 +439,7 @@ static struct builtin builtin_cat =
 
 
 /* chainloader */
-static int
+static void
 chainloader_func (char *arg, int flags)
 {
   int force = 0;
@@ -457,7 +457,7 @@ chainloader_func (char *arg, int flags)
   if (! grub_open (file))
     {
       kernel_type = KERNEL_TYPE_NONE;
-      return 1;
+      return;
     }
 
   /* Read at least 512 bytes (SECTOR_SIZE), at most 585 KiB.  */
@@ -471,7 +471,7 @@ chainloader_func (char *arg, int flags)
       if (errnum == ERR_NONE)
 	errnum = ERR_EXEC_FORMAT;
       
-      return 1;
+      return;
     }
 
   /* If not loading it forcibly, check for the signature.  */
@@ -482,7 +482,7 @@ chainloader_func (char *arg, int flags)
       grub_close ();
       errnum = ERR_EXEC_FORMAT;
       kernel_type = KERNEL_TYPE_NONE;
-      return 1;
+      return;
     }
 
   grub_close ();
@@ -497,7 +497,7 @@ chainloader_func (char *arg, int flags)
 
   errnum = ERR_NONE;
   
-  return 0;
+  return;
 }
 
 static struct builtin builtin_chainloader =
@@ -516,7 +516,7 @@ static struct builtin builtin_chainloader =
    Then, run "cmp" with the files. If no output is obtained, probably
    the code is good, otherwise investigate what's wrong...  */
 /* cmp FILE1 FILE2 */
-static int
+static void
 cmp_func (char *arg, int flags)
 {
   /* The filenames.  */
@@ -534,7 +534,7 @@ cmp_func (char *arg, int flags)
   if (! *file1 || ! *file2)
     {
       errnum = ERR_BAD_ARGUMENT;
-      return 1;
+      return;
     }
 
   /* Terminate the filenames for convenience.  */
@@ -544,14 +544,14 @@ cmp_func (char *arg, int flags)
   /* Read the whole data from FILE1.  */
   addr1 = (char *) RAW_ADDR (0x100000);
   if (! grub_open (file1))
-    return 1;
+    return;
   
   /* Get the size.  */
   size = filemax;
   if (grub_read (addr1, -1) != size)
     {
       grub_close ();
-      return 1;
+      return;
     }
   
   grub_close ();
@@ -559,7 +559,7 @@ cmp_func (char *arg, int flags)
   /* Read the whole data from FILE2.  */
   addr2 = addr1 + size;
   if (! grub_open (file2))
-    return 1;
+    return;
 
   /* Check if the size of FILE2 is equal to the one of FILE2.  */
   if (size != filemax)
@@ -567,13 +567,13 @@ cmp_func (char *arg, int flags)
       grub_printf ("Differ in size: 0x%x [%s], 0x%x [%s]\n",
 		   size, file1, filemax, file2);
       grub_close ();
-      return 0;
+      return;
     }
   
   if (! grub_read (addr2, -1))
     {
       grub_close ();
-      return 1;
+      return;
     }
   
   grub_close ();
@@ -587,7 +587,7 @@ cmp_func (char *arg, int flags)
 		     (unsigned) addr2[i], file2);
     }
   
-  return 0;
+  return;
 }
 
 static struct builtin builtin_cmp =
@@ -605,7 +605,7 @@ static struct builtin builtin_cmp =
 /* Set new colors used for the menu interface. Support two methods to
    specify a color name: a direct integer representation and a symbolic
    color name. An example of the latter is "blink-light-gray/blue".  */
-static int
+static void
 color_func (char *arg, int flags)
 {
   char *normal;
@@ -694,7 +694,7 @@ color_func (char *arg, int flags)
 
   new_normal_color = color_number (normal);
   if (new_normal_color < 0 && ! safe_parse_maxint (&normal, &new_normal_color))
-    return 1;
+    return;
   
   /* The second argument is optional, so set highlight_color
      to inverted NORMAL_COLOR.  */
@@ -706,13 +706,13 @@ color_func (char *arg, int flags)
       new_highlight_color = color_number (highlight);
       if (new_highlight_color < 0
 	  && ! safe_parse_maxint (&highlight, &new_highlight_color))
-	return 1;
+	return;
     }
 
   if (current_term->setcolor)
     current_term->setcolor (new_normal_color, new_highlight_color);
   
-  return 0;
+  return;
 }
 
 static struct builtin builtin_color =
@@ -735,7 +735,7 @@ static struct builtin builtin_color =
 
 
 /* configfile */
-static int
+static void
 configfile_func (char *arg, int flags)
 {
   char *new_config = config_file;
@@ -743,7 +743,7 @@ configfile_func (char *arg, int flags)
 
   /* Check if the file ARG is present.  */
   if (! grub_open (arg))
-    return 1;
+    return;
 
   grub_close ();
   
@@ -763,7 +763,7 @@ configfile_func (char *arg, int flags)
   grub_longjmp (restart_env, 0);
 
   /* Never reach here.  */
-  return 0;
+  return;
 }
 
 static struct builtin builtin_configfile =
@@ -777,7 +777,7 @@ static struct builtin builtin_configfile =
 
 
 /* debug */
-static int
+static void
 debug_func (char *arg, int flags)
 {
   (void)arg; (void)flags;
@@ -793,7 +793,7 @@ debug_func (char *arg, int flags)
       grub_printf (" Debug mode is turned on\n");
     }
 
-  return 0;
+  return;
 }
 
 static struct builtin builtin_debug =
@@ -807,7 +807,7 @@ static struct builtin builtin_debug =
 
 
 /* default */
-static int
+static void
 default_func (char *arg, int flags)
 {
   (void)flags;
@@ -815,14 +815,14 @@ default_func (char *arg, int flags)
   if (grub_strcmp (arg, "saved") == 0)
     {
       default_entry = saved_entryno;
-      return 0;
+      return;
     }
 #endif /* SUPPORT_DISKLESS */
   
   if (! safe_parse_maxint (&arg, &default_entry))
-    return 1;
+    return;
 
-  return 0;
+  return;
 }
 
 static struct builtin builtin_default =
@@ -842,7 +842,7 @@ static struct builtin builtin_default =
 
 #ifdef GRUB_UTIL
 /* device */
-static int
+static void
 device_func (char *arg, int flags)
 {
   char *drive = arg;
@@ -866,7 +866,7 @@ device_func (char *arg, int flags)
 
   assign_device_name (current_drive, device);
   
-  return 0;
+  return;
 }
 
 static struct builtin builtin_device =
@@ -883,7 +883,7 @@ static struct builtin builtin_device =
 
 #ifdef SUPPORT_NETBOOT
 /* dhcp */
-static int
+static void
 dhcp_func (char *arg, int flags)
 {
   /* For now, this is an alias for bootp.  */
@@ -940,7 +940,7 @@ static int splashimage_func(char *arg, int flags) {
   if (flags == BUILTIN_MENU)
     current_term = term_table + i;
 
-  return 0;
+  return;
 }
 
 static struct builtin builtin_splashimage =
@@ -954,7 +954,7 @@ static struct builtin builtin_splashimage =
 
 
 /* shade */
-static int
+static void
 shade_func(char *arg, int flags)
 {
     int new_shade;
@@ -971,7 +971,7 @@ shade_func(char *arg, int flags)
        }
     }
 
-    return 0;
+    return;
 }
 
 static struct builtin builtin_shade =
@@ -985,7 +985,7 @@ static struct builtin builtin_shade =
 
 
 /* foreground */
-static int
+static void
 foreground_func(char *arg, int flags)
 {
     if (grub_strlen(arg) == 6) {
@@ -997,7 +997,7 @@ foreground_func(char *arg, int flags)
 	if (graphics_inited)
 	    graphics_set_palette(15, r, g, b);
 
-	return 0;
+	return;
     }
 
     return 1;
@@ -1015,7 +1015,7 @@ static struct builtin builtin_foreground =
 
 
 /* background */
-static int
+static void
 background_func(char *arg, int flags)
 {
     if (grub_strlen(arg) == 6) {
@@ -1026,7 +1026,7 @@ background_func(char *arg, int flags)
 	background = (r << 16) | (g << 8) | b;
 	if (graphics_inited)
 	    graphics_set_palette(0, r, g, b);
-	return 0;
+	return;
     }
 
     return 1;
@@ -1044,7 +1044,7 @@ static struct builtin builtin_background =
 
 
 /* border */
-static int
+static void
 border_func(char *arg, int flags)
 {
     if (grub_strlen(arg) == 6) {
@@ -1056,7 +1056,7 @@ border_func(char *arg, int flags)
        if (graphics_inited)
            graphics_set_palette(0x11, r, g, b);
 
-       return 0;
+       return;
     }
 
     return 1;
@@ -1074,7 +1074,7 @@ static struct builtin builtin_border =
 
 
 /* viewport */
-static int
+static void
 viewport_func (char *arg, int flags)
 {
     int i;
@@ -1109,7 +1109,7 @@ viewport_func (char *arg, int flags)
        graphics_cls();
     }
 
-    return 0;
+    return;
 }
 
 static struct builtin builtin_viewport =
@@ -1127,13 +1127,13 @@ static struct builtin builtin_viewport =
 
 
 /* clear */
-static int 
+static void
 clear_func() 
 {
   if (current_term->cls)
     current_term->cls();
 
-  return 0;
+  return;
 }
 
 static struct builtin builtin_clear =
@@ -1147,7 +1147,7 @@ static struct builtin builtin_clear =
 
 
 /* displayapm */
-static int
+static void
 displayapm_func (char *arg, int flags)
 {
   (void)arg; (void)flags;
@@ -1177,7 +1177,7 @@ displayapm_func (char *arg, int flags)
       grub_printf ("No APM BIOS found or probe failed\n");
     }
 
-  return 0;
+  return;
 }
 
 static struct builtin builtin_displayapm =
@@ -1191,7 +1191,7 @@ static struct builtin builtin_displayapm =
 
 
 /* displaymem */
-static int
+static void
 displaymem_func (char *arg, int flags)
 {
   (void)arg; (void)flags;
@@ -1233,7 +1233,7 @@ displaymem_func (char *arg, int flags)
 	}
     }
 
-  return 0;
+  return;
 }
 
 static struct builtin builtin_displaymem =
@@ -1249,7 +1249,7 @@ static struct builtin builtin_displaymem =
 
 /* dump FROM TO */
 #ifdef GRUB_UTIL
-static int
+static void
 dump_func (char *arg, int flags)
 {
   char *from, *to;
@@ -1292,7 +1292,7 @@ dump_func (char *arg, int flags)
     }
 
   grub_close ();
-  return 0;
+  return;
 }
 
 static struct builtin builtin_dump =
@@ -1311,7 +1311,7 @@ static char embed_info[32];
 /* embed */
 /* Embed a Stage 1.5 in the first cylinder after MBR or in the
    bootloader block in a FFS.  */
-static int
+static void
 embed_func (char *arg, int flags)
 {
   char *stage1_5;
@@ -1326,21 +1326,21 @@ embed_func (char *arg, int flags)
 
   /* Open a Stage 1.5.  */
   if (! grub_open (stage1_5))
-    return 1;
+    return;
 
   /* Read the whole of the Stage 1.5.  */
   len = grub_read (stage1_5_buffer, -1);
   grub_close ();
   
   if (errnum)
-    return 1;
+    return;
   
   size = (len + SECTOR_SIZE - 1) / SECTOR_SIZE;
   
   /* Get the device where the Stage 1.5 will be embedded.  */
   set_device (device);
   if (errnum)
-    return 1;
+    return;
 
   if (current_partition == 0xFFFFFF)
     {
@@ -1352,24 +1352,24 @@ embed_func (char *arg, int flags)
       
       /* Open the partition.  */
       if (! open_partition ())
-	return 1;
+	return;
 
       /* No floppy has MBR.  */
       if (! (current_drive & 0x80))
 	{
 	  errnum = ERR_DEV_VALUES;
-	  return 1;
+	  return;
 	}
       
       /* Read the MBR of CURRENT_DRIVE.  */
       if (! rawread (current_drive, PC_MBR_SECTOR, 0, SECTOR_SIZE, mbr))
-	return 1;
+	return;
       
       /* Sanity check.  */
       if (! PC_MBR_CHECK_SIG (mbr))
 	{
 	  errnum = ERR_BAD_PART_TABLE;
-	  return 1;
+	  return;
 	}
 
       /* Check if the disk can store the Stage 1.5.  */
@@ -1377,7 +1377,7 @@ embed_func (char *arg, int flags)
 	if (PC_SLICE_TYPE (mbr, i) && UI_COMPARE((unsigned)(PC_SLICE_START (mbr, i) - 1), <, size))
 	  {
 	    errnum = ERR_NO_DISK_SPACE;
-	    return 1;
+	    return;
 	  }
       
       /* Check for EZ-BIOS signature. It should be in the third
@@ -1385,7 +1385,7 @@ embed_func (char *arg, int flags)
        * load and check both.  
        */
       if (! rawread (current_drive, 1, 0, 2 * SECTOR_SIZE, ezbios_check))
-	return 1;
+	return;
 
       if (! memcmp (ezbios_check + 3, "AERMH", 5)
 	  || ! memcmp (ezbios_check + 512 + 3, "AERMH", 5))
@@ -1394,7 +1394,7 @@ embed_func (char *arg, int flags)
 	   * not overwrite.
 	   */
 	  errnum = ERR_NO_DISK_SPACE;
-	  return 1;
+	  return;
 	}
 
       sector = 1;
@@ -1406,14 +1406,14 @@ embed_func (char *arg, int flags)
       
       /* Open the partition.  */
       if (! open_device ())
-	return 1;
+	return;
 
       /* Check if the current slice supports embedding.  */
       if (fsys_table[fsys_type].embed_func == 0
 	  || ! fsys_table[fsys_type].embed_func (&start_sector, size))
 	{
 	  errnum = ERR_DEV_VALUES;
-	  return 1;
+	  return;
 	}
 
       sector = part_start + start_sector;
@@ -1424,11 +1424,11 @@ embed_func (char *arg, int flags)
 
   /* Now perform the embedding.  */
   if (! devwrite (sector - part_start, size, stage1_5_buffer))
-    return 1;
+    return;
   
   grub_printf (" %d sectors are embedded.\n", size);
   grub_sprintf (embed_info, "%d+%d", (int)(sector - part_start), size);
-  return 0;
+  return;
 }
 
 static struct builtin builtin_embed =
@@ -1444,7 +1444,7 @@ static struct builtin builtin_embed =
 
 
 /* fallback */
-static int
+static void
 fallback_func (char *arg, int flags)
 {
   int i = 0;
@@ -1456,7 +1456,7 @@ fallback_func (char *arg, int flags)
       int j;
       
       if (! safe_parse_maxint (&arg, &entry))
-	return 1;
+	return;
 
       /* Remove duplications to prevent infinite looping.  */
       for (j = 0; j < i; j++)
@@ -1477,7 +1477,7 @@ fallback_func (char *arg, int flags)
 
   fallback_entryno = (i == 0) ? -1 : 0;
   
-  return 0;
+  return;
 }
 
 static struct builtin builtin_fallback =
@@ -1500,7 +1500,7 @@ static struct builtin builtin_fallback =
 
 /* find */
 /* Search for the filename ARG in all of partitions.  */
-static int
+static void
 find_func (char *arg, int flags)
 {
   char *filename = arg;
@@ -1588,11 +1588,11 @@ find_func (char *arg, int flags)
   if (got_file)
     {
       errnum = ERR_NONE;
-      return 0;
+      return;
     }
 
   errnum = ERR_FILE_NOT_FOUND;
-  return 1;
+  return;
 }
 
 static struct builtin builtin_find =
@@ -1607,7 +1607,7 @@ static struct builtin builtin_find =
 
 
 /* fstest */
-static int
+static void
 fstest_func (char *arg, int flags)
 {
   (void)arg; (void)flags;
@@ -1623,7 +1623,7 @@ fstest_func (char *arg, int flags)
       printf (" Filesystem tracing is now on\n");
     }
 
-  return 0;
+  return;
 }
 
 static struct builtin builtin_fstest =
@@ -1637,7 +1637,7 @@ static struct builtin builtin_fstest =
 
 
 /* geometry */
-static int
+static void
 geometry_func (char *arg, int flags)
 {
   struct geometry geom;
@@ -1651,13 +1651,13 @@ geometry_func (char *arg, int flags)
   /* Get the device number.  */
   set_device (device);
   if (errnum)
-    return 1;
+    return;
 
   /* Check for the geometry.  */
   if (get_diskinfo (current_drive, &geom))
     {
       errnum = ERR_NO_DISK;
-      return 1;
+      return;
     }
 
   /* Attempt to read the first sector, because some BIOSes turns out not
@@ -1666,7 +1666,7 @@ geometry_func (char *arg, int flags)
   if (biosdisk (BIOSDISK_READ, current_drive, &geom, 0, 1, SCRATCHSEG))
     {
       errnum = ERR_READ;
-      return 1;
+      return;
     }
 
 #ifdef GRUB_UTIL
@@ -1683,7 +1683,7 @@ geometry_func (char *arg, int flags)
       if (! safe_parse_maxint (&cylinder, &num_cylinder)
 	  || ! safe_parse_maxint (&head, &num_head)
 	  || ! safe_parse_maxint (&sector, &num_sector))
-	return 1;
+	return;
 
       disks[current_drive].cylinders = num_cylinder;
       disks[current_drive].heads = num_head;
@@ -1717,7 +1717,7 @@ geometry_func (char *arg, int flags)
 	       (int)geom.total_sectors, msg);
   real_open_partition (1);
 
-  return 0;
+  return;
 }
 
 static struct builtin builtin_geometry =
@@ -1736,7 +1736,7 @@ static struct builtin builtin_geometry =
 
 
 /* halt */
-static int
+static void
 halt_func (char *arg, int flags)
 {
   int no_apm;
@@ -1746,7 +1746,7 @@ halt_func (char *arg, int flags)
   grub_halt (no_apm);
   
   /* Never reach here.  */
-  return 1;
+  return;
 }
 
 static struct builtin builtin_halt =
@@ -1761,7 +1761,7 @@ static struct builtin builtin_halt =
 
 
 /* help */
-static int
+static void
 help_func (char *arg, int flags)
 {
   int all = 0, max_short_doc_len, max_long_doc_len;
@@ -1882,7 +1882,7 @@ help_func (char *arg, int flags)
       while (*arg);
     }
 
-  return 0;
+  return;
 }
 
 static struct builtin builtin_help =
@@ -1897,13 +1897,13 @@ static struct builtin builtin_help =
 
 
 /* hiddenmenu */
-static int
+static void
 hiddenmenu_func (char *arg, int flags)
 {
   (void)arg; (void)flags;
 
   show_menu = 0;
-  return 0;
+  return;
 }
 
 static struct builtin builtin_hiddenmenu =
@@ -1920,13 +1920,13 @@ static struct builtin builtin_hiddenmenu =
 };
 
 /* quietboot */
-static int
+static void
 quiet_func (char *arg, int flags)
 {
   (void)arg; (void)flags;
 
   quiet_boot = 1;
-  return 0;
+  return;
 }
 
 static struct builtin builtin_quiet =
@@ -1940,18 +1940,18 @@ static struct builtin builtin_quiet =
 
 
 /* hide */
-static int
+static void
 hide_func (char *arg, int flags)
 {
   (void)arg; (void)flags;
 
   if (! set_device (arg))
-    return 1;
+    return;
 
   if (! set_partition_hidden_flag (1))
-    return 1;
+    return;
 
-  return 0;
+  return;
 }
 
 static struct builtin builtin_hide =
@@ -1967,7 +1967,7 @@ static struct builtin builtin_hide =
 
 #ifdef SUPPORT_NETBOOT
 /* ifconfig */
-static int
+static void
 ifconfig_func (char *arg, int flags)
 {
   char *svr = 0, *ip = 0, *gw = 0, *sm = 0;
@@ -1976,7 +1976,7 @@ ifconfig_func (char *arg, int flags)
     {
       grub_printf ("No ethernet card found.\n");
       errnum = ERR_DEV_VALUES;
-      return 1;
+      return;
     }
   
   while (*arg) 
@@ -1992,7 +1992,7 @@ ifconfig_func (char *arg, int flags)
       else
 	{
 	  errnum = ERR_BAD_ARGUMENT;
-	  return 1;
+	  return;
 	}
       
       arg = skip_to (0, arg);
@@ -2001,11 +2001,11 @@ ifconfig_func (char *arg, int flags)
   if (! ifconfig (ip, sm, gw, svr))
     {
       errnum = ERR_BAD_ARGUMENT;
-      return 1;
+      return;
     }
   if (!quiet_boot)
     print_network_configuration ();
-  return 0;
+  return;
 }
 
 static struct builtin builtin_ifconfig =
@@ -2021,7 +2021,7 @@ static struct builtin builtin_ifconfig =
 
 
 /* impsprobe */
-static int
+static void
 impsprobe_func (char *arg, int flags)
 {
   (void)arg; (void)flags;
@@ -2029,12 +2029,12 @@ impsprobe_func (char *arg, int flags)
 #ifdef GRUB_UTIL
   /* In the grub shell, we cannot probe IMPS.  */
   errnum = ERR_UNRECOGNIZED;
-  return 1;
+  return;
 #else /* ! GRUB_UTIL */
   if (!imps_probe ())
     printf (" No MPS information found or probe failed\n");
 
-  return 0;
+  return;
 #endif /* ! GRUB_UTIL */
 }
 
@@ -2051,7 +2051,7 @@ static struct builtin builtin_impsprobe =
 
 
 /* initrd */
-static int
+static void
 initrd_func (char *arg, int flags)
 {
   (void)flags;
@@ -2061,15 +2061,15 @@ initrd_func (char *arg, int flags)
     case KERNEL_TYPE_LINUX:
     case KERNEL_TYPE_BIG_LINUX:
       if (! load_initrd (arg))
-	return 1;
+	return;
       break;
 
     default:
       errnum = ERR_NEED_LX_KERNEL;
-      return 1;
+      return;
     }
 
-  return 0;
+  return;
 }
 
 static struct builtin builtin_initrd =
@@ -2084,7 +2084,7 @@ static struct builtin builtin_initrd =
 
 
 /* install */
-static int
+static void
 install_func (char *arg, int flags)
 {
   char *stage1_file, *dest_dev, *file, *addr;
@@ -2598,7 +2598,7 @@ install_func (char *arg, int flags)
   no_decompression = 0;
 #endif
 
-  return errnum;
+  return;
 }
 
 static struct builtin builtin_install =
@@ -2625,7 +2625,7 @@ static struct builtin builtin_install =
 
 
 /* ioprobe */
-static int
+static void
 ioprobe_func (char *arg, int flags)
 {
   (void)flags;
@@ -2633,7 +2633,7 @@ ioprobe_func (char *arg, int flags)
 #ifdef GRUB_UTIL
   
   errnum = ERR_UNRECOGNIZED;
-  return 1;
+  return;
   
 #else /* ! GRUB_UTIL */
   
@@ -2642,7 +2642,7 @@ ioprobe_func (char *arg, int flags)
   /* Get the drive number.  */
   set_device (arg);
   if (errnum)
-    return 1;
+    return;
 
   /* Clean out IO_MAP.  */
   grub_memset ((char *) io_map, 0, IO_MAP_SIZE * sizeof (unsigned short));
@@ -2654,7 +2654,7 @@ ioprobe_func (char *arg, int flags)
   for (port = io_map; *port != 0; port++)
     grub_printf (" 0x%x", (unsigned int) *port);
 
-  return 0;
+  return;
   
 #endif /* ! GRUB_UTIL */
 }
@@ -2669,13 +2669,13 @@ static struct builtin builtin_ioprobe =
 };
 
 /* print */
-static int
+static void
 print_func (char *arg, int flags)
 {
   (void)flags;
   printf("%s\n", arg);
 
-  return 0;
+  return;
 }
 
 static struct builtin builtin_print =
@@ -2690,7 +2690,7 @@ static struct builtin builtin_print =
 
 
 /* kernel */
-static int
+static void
 kernel_func (char *arg, int flags)
 {
   int len;
@@ -2728,7 +2728,7 @@ kernel_func (char *arg, int flags)
 	  else
 	    {
 	      errnum = ERR_BAD_ARGUMENT;
-	      return 1;
+	      return;
 	    }
 	}
       /* If the `--no-mem-option' is specified, don't pass a Linux's mem
@@ -2750,17 +2750,17 @@ kernel_func (char *arg, int flags)
   if (len + 1 > MB_CMDLINE_BUFLEN)
     {
       errnum = ERR_WONT_FIT;
-      return 1;
+      return;
     }
 
   /* Copy the command-line to MB_CMDLINE.  */
   grub_memmove (mb_cmdline, arg, len + 1);
   kernel_type = load_image (arg, mb_cmdline, suggested_type, load_flags);
   if (kernel_type == KERNEL_TYPE_NONE)
-    return 1;
+    return;
 
   mb_cmdline += len + 1;
-  return 0;
+  return;
 }
 
 static struct builtin builtin_kernel =
@@ -2780,7 +2780,7 @@ static struct builtin builtin_kernel =
 
 
 /* lock */
-static int
+static void
 lock_func (char *arg, int flags)
 {
   (void)arg; (void)flags;
@@ -2788,10 +2788,10 @@ lock_func (char *arg, int flags)
   if (! auth && password)
     {
       errnum = ERR_PRIVILEGED;
-      return 1;
+      return;
     }
 
-  return 0;
+  return;
 }
 
 static struct builtin builtin_lock =
@@ -2805,15 +2805,15 @@ static struct builtin builtin_lock =
   
 
 /* makeactive */
-static int
+static void
 makeactive_func (char *arg, int flags)
 {
   (void)arg; (void)flags;
 
   if (! make_saved_active ())
-    return 1;
+    return;
 
-  return 0;
+  return;
 }
 
 static struct builtin builtin_makeactive =
@@ -2829,7 +2829,7 @@ static struct builtin builtin_makeactive =
 
 /* map */
 /* Map FROM_DRIVE to TO_DRIVE.  */
-static int
+static void
 map_func (char *arg, int flags)
 {
   char *to_drive;
@@ -2844,13 +2844,13 @@ map_func (char *arg, int flags)
   /* Get the drive number for TO_DRIVE.  */
   set_device (to_drive);
   if (errnum)
-    return 1;
+    return;
   to = current_drive;
 
   /* Get the drive number for FROM_DRIVE.  */
   set_device (from_drive);
   if (errnum)
-    return 1;
+    return;
   from = current_drive;
 
   /* Search for an empty slot in BIOS_DRIVE_MAP.  */
@@ -2867,7 +2867,7 @@ map_func (char *arg, int flags)
   if (i == DRIVE_MAP_SIZE)
     {
       errnum = ERR_WONT_FIT;
-      return 1;
+      return;
     }
 
   if (to == from)
@@ -2877,7 +2877,7 @@ map_func (char *arg, int flags)
   else
     bios_drive_map[i] = from | (to << 8);
   
-  return 0;
+  return;
 }
 
 static struct builtin builtin_map =
@@ -2894,7 +2894,7 @@ static struct builtin builtin_map =
 
 #ifdef USE_MD5_PASSWORDS
 /* md5crypt */
-static int
+static void
 md5crypt_func (char *arg, int flags)
 {
   char crypted[36];
@@ -2938,7 +2938,7 @@ md5crypt_func (char *arg, int flags)
   make_md5_password (key, crypted);
 
   grub_printf ("Encrypted: %s\n", crypted);
-  return 0;
+  return;
 }
 
 static struct builtin builtin_md5crypt =
@@ -2953,7 +2953,7 @@ static struct builtin builtin_md5crypt =
 
 
 /* module */
-static int
+static void
 module_func (char *arg, int flags)
 {
   int len = grub_strlen (arg);
@@ -2965,26 +2965,26 @@ module_func (char *arg, int flags)
       if (mb_cmdline + len + 1 > (char *) MB_CMDLINE_BUF + MB_CMDLINE_BUFLEN)
 	{
 	  errnum = ERR_WONT_FIT;
-	  return 1;
+	  return;
 	}
       grub_memmove (mb_cmdline, arg, len + 1);
       if (! load_module (arg, mb_cmdline))
-	return 1;
+	return;
       mb_cmdline += len + 1;
       break;
 
     case KERNEL_TYPE_LINUX:
     case KERNEL_TYPE_BIG_LINUX:
       if (! load_initrd (arg))
-	return 1;
+	return;
       break;
 
     default:
       errnum = ERR_NEED_MB_KERNEL;
-      return 1;
+      return;
     }
 
-  return 0;
+  return;
 }
 
 static struct builtin builtin_module =
@@ -3002,22 +3002,18 @@ static struct builtin builtin_module =
 
 
 /* modulenounzip */
-static int
+static void
 modulenounzip_func (char *arg, int flags)
 {
-  int ret;
-
 #ifndef NO_DECOMPRESSION
   no_decompression = 1;
 #endif
 
-  ret = module_func (arg, flags);
+  module_func (arg, flags);
 
 #ifndef NO_DECOMPRESSION
   no_decompression = 0;
 #endif
-
-  return ret;
 }
 
 static struct builtin builtin_modulenounzip =
@@ -3032,7 +3028,7 @@ static struct builtin builtin_modulenounzip =
 
 
 /* pager [on|off] */
-static int
+static void
 pager_func (char *arg, int flags)
 {
   (void)flags;
@@ -3047,11 +3043,11 @@ pager_func (char *arg, int flags)
   else
     {
       errnum = ERR_BAD_ARGUMENT;
-      return 1;
+      return;
     }
 
   grub_printf (" Internal pager is now %s\n", use_pager ? "on" : "off");
-  return 0;
+  return;
 }
 
 static struct builtin builtin_pager =
@@ -3066,7 +3062,7 @@ static struct builtin builtin_pager =
 
 
 /* partnew PART TYPE START LEN */
-static int
+static void
 partnew_func (char *arg, int flags)
 {
   int new_type, new_start, new_len;
@@ -3096,13 +3092,13 @@ partnew_func (char *arg, int flags)
       
   /* Get the drive and the partition.  */
   if (! set_device (arg))
-    return 1;
+    return;
 
   /* The drive must be a hard disk.  */
   if (! (current_drive & 0x80))
     {
       errnum = ERR_BAD_ARGUMENT;
-      return 1;
+      return;
     }
 
   /* The partition must a primary partition.  */
@@ -3110,7 +3106,7 @@ partnew_func (char *arg, int flags)
       || (current_partition & 0xFFFF) != 0xFFFF)
     {
       errnum = ERR_BAD_ARGUMENT;
-      return 1;
+      return;
     }
 
   entry = current_partition >> 16;
@@ -3118,34 +3114,34 @@ partnew_func (char *arg, int flags)
   /* Get the new partition type.  */
   arg = skip_to (0, arg);
   if (! safe_parse_maxint (&arg, &new_type))
-    return 1;
+    return;
 
   /* The partition type is unsigned char.  */
   if (new_type > 0xFF)
     {
       errnum = ERR_BAD_ARGUMENT;
-      return 1;
+      return;
     }
 
   /* Get the new partition start.  */
   arg = skip_to (0, arg);
   if (! safe_parse_maxint (&arg, &new_start))
-    return 1;
+    return;
   
   /* Get the new partition length.  */
   arg = skip_to (0, arg);
   if (! safe_parse_maxint (&arg, &new_len))
-    return 1;
+    return;
 
   /* Read the MBR.  */
   if (! rawread (current_drive, 0, 0, SECTOR_SIZE, mbr))
-    return 1;
+    return;
 
   /* Check if the new partition will fit in the disk.  */
   if (IU_COMPARE(new_start + new_len, >, (unsigned)buf_geom.total_sectors))
     {
       errnum = ERR_GEOM;
-      return 1;
+      return;
     }
 
   /* Store the partition information in the MBR.  */
@@ -3169,9 +3165,9 @@ partnew_func (char *arg, int flags)
   /* Write back the MBR to the disk.  */
   buf_track = -1;
   if (! rawwrite (current_drive, 0, mbr))
-    return 1;
+    return;
 
-  return 0;
+  return;
 }
 
 static struct builtin builtin_partnew =
@@ -3186,7 +3182,7 @@ static struct builtin builtin_partnew =
 
 
 /* parttype PART TYPE */
-static int
+static void
 parttype_func (char *arg, int flags)
 {
   int new_type;
@@ -3198,13 +3194,13 @@ parttype_func (char *arg, int flags)
 
   /* Get the drive and the partition.  */
   if (! set_device (arg))
-    return 1;
+    return;
 
   /* The drive must be a hard disk.  */
   if (! (current_drive & 0x80))
     {
       errnum = ERR_BAD_ARGUMENT;
-      return 1;
+      return;
     }
   
   /* The partition must be a PC slice.  */
@@ -3212,19 +3208,19 @@ parttype_func (char *arg, int flags)
       || (current_partition & 0xFFFF) != 0xFFFF)
     {
       errnum = ERR_BAD_ARGUMENT;
-      return 1;
+      return;
     }
 
   /* Get the new partition type.  */
   arg = skip_to (0, arg);
   if (! safe_parse_maxint (&arg, &new_type))
-    return 1;
+    return;
 
   /* The partition type is unsigned char.  */
   if (new_type > 0xFF)
     {
       errnum = ERR_BAD_ARGUMENT;
-      return 1;
+      return;
     }
 
   /* Look for the partition.  */
@@ -3236,7 +3232,7 @@ parttype_func (char *arg, int flags)
       if (gpt_offset != 0)
 	{
 	  errnum = ERR_BAD_ARGUMENT;
-	  return 1;
+	  return;
 	}
 
       if (part == current_partition)
@@ -3249,15 +3245,15 @@ parttype_func (char *arg, int flags)
 	  /* Write back the MBR to the disk.  */
 	  buf_track = -1;
 	  if (! rawwrite (current_drive, offset, mbr))
-	    return 1;
+	    return;
 
 	  /* Succeed.  */
-	  return 0;
+	  return;
 	}
     }
 
   /* The partition was not found.  ERRNUM was set by next_partition.  */
-  return 1;
+  return;
 }
 
 static struct builtin builtin_parttype =
@@ -3271,7 +3267,7 @@ static struct builtin builtin_parttype =
 
 
 /* password */
-static int
+static void
 password_func (char *arg, int flags)
 {
   int len;
@@ -3303,7 +3299,7 @@ password_func (char *arg, int flags)
       if (check_password (entered, arg, type) != 0)
 	{
 	  errnum = ERR_PRIVILEGED;
-	  return 1;
+	  return;
 	}
     }
   else
@@ -3314,7 +3310,7 @@ password_func (char *arg, int flags)
       if (len + 2 > PASSWORD_BUFLEN)
 	{
 	  errnum = ERR_WONT_FIT;
-	  return 1;
+	  return;
 	}
       
       /* Copy the password and clear the rest of the buffer.  */
@@ -3323,7 +3319,7 @@ password_func (char *arg, int flags)
       grub_memset (password + len, 0, PASSWORD_BUFLEN - len);
       password_type = type;
     }
-  return 0;
+  return;
 }
 
 static struct builtin builtin_password =
@@ -3345,7 +3341,7 @@ static struct builtin builtin_password =
 
 
 /* pause */
-static int
+static void
 pause_func (char *arg, int flags)
 {
   (void)flags;
@@ -3354,9 +3350,9 @@ pause_func (char *arg, int flags)
 
   /* If ESC is returned, then abort this entry.  */
   if (ASCII_CHAR (getkey ()) == 27)
-    return 1;
+    return;
 
-  return 0;
+  return;
 }
 
 static struct builtin builtin_pause =
@@ -3371,13 +3367,13 @@ static struct builtin builtin_pause =
 
 #ifdef GRUB_UTIL
 /* quit */
-static int
+static void
 quit_func (char *arg, int flags)
 {
   stop ();
   
   /* Never reach here.  */
-  return 0;
+  return;
 }
 
 static struct builtin builtin_quit =
@@ -3393,7 +3389,7 @@ static struct builtin builtin_quit =
 
 #ifdef SUPPORT_NETBOOT
 /* rarp */
-static int
+static void
 rarp_func (char *arg, int flags)
 {
   if (! rarp ())
@@ -3401,13 +3397,13 @@ rarp_func (char *arg, int flags)
       if (errnum == ERR_NONE)
 	errnum = ERR_DEV_VALUES;
 
-      return 1;
+      return;
     }
 
   /* Notify the configuration.  */
   if (!quiet_boot)
     print_network_configuration ();
-  return 0;
+  return;
 }
 
 static struct builtin builtin_rarp =
@@ -3421,18 +3417,18 @@ static struct builtin builtin_rarp =
 #endif /* SUPPORT_NETBOOT */
 
 
-static int
+static void
 read_func (char *arg, int flags)
 {
   int addr;
   (void)flags;
 
   if (! safe_parse_maxint (&arg, &addr))
-    return 1;
+    return;
 
   grub_printf ("Address 0x%x: Value 0x%x\n",
 	       addr, *((unsigned *) RAW_ADDR (addr)));
-  return 0;
+  return;
 }
 
 static struct builtin builtin_read =
@@ -3447,7 +3443,7 @@ static struct builtin builtin_read =
 
 
 /* reboot */
-static int
+static void
 reboot_func (char *arg, int flags)
 {
   (void)arg; (void)flags;
@@ -3455,7 +3451,7 @@ reboot_func (char *arg, int flags)
   grub_reboot ();
 
   /* Never reach here.  */
-  return 1;
+  return;
 }
 
 static struct builtin builtin_reboot =
@@ -3503,7 +3499,7 @@ print_root_device (void)
     print_fsys_type ();
 }
 
-static int
+static void
 real_root_func (char *arg, int attempt_mount)
 {
   int hdbias = 0;
@@ -3516,20 +3512,20 @@ real_root_func (char *arg, int attempt_mount)
   	if (! *arg)
     	  {
      	    print_root_device ();
-      	    return 0;
+      	    return;
     	  }
     }
   
   /* Call set_device to get the drive and the partition in ARG.  */
   next = set_device (arg);
   if (! next)
-    return 1;
+    return;
 
   /* Ignore ERR_FSYS_MOUNT.  */
   if (attempt_mount)
     {
       if (! open_device () && errnum != ERR_FSYS_MOUNT)
-	return 1;
+	return;
     }
   else
     {
@@ -3539,7 +3535,7 @@ real_root_func (char *arg, int attempt_mount)
 	{
 	  set_bootdev (0);
 	  if (errnum)
-	    return 1;
+	    return;
 	}
     }
   
@@ -3556,17 +3552,17 @@ real_root_func (char *arg, int attempt_mount)
       errnum = 0;
       bootdev = set_bootdev (hdbias);
       if (errnum)
-	return 1;
+	return;
       
       /* Print the type of the filesystem.  */
       if (!quiet_boot)
         print_fsys_type ();
     }
   
-  return 0;
+  return;
 }
 
-static int
+static void
 root_func (char *arg, int flags)
 {
   (void)flags;
@@ -3594,7 +3590,7 @@ static struct builtin builtin_root =
 
 
 /* rootnoverify */
-static int
+static void
 rootnoverify_func (char *arg, int flags)
 {
   (void)flags;
@@ -3617,7 +3613,7 @@ static struct builtin builtin_rootnoverify =
 
 
 /* savedefault */
-static int
+static void
 savedefault_func (char *arg, int flags)
 {
 #if !defined(SUPPORT_DISKLESS)
@@ -3628,13 +3624,13 @@ savedefault_func (char *arg, int flags)
   #endif
 #else /* !SUPPORT_DISKLESS */ 
   errnum = ERR_UNRECOGNIZED;
-  return 1;
+  return;
 #endif /* !SUPPORT_DISKLESS */
 }
 
 #if !defined(SUPPORT_DISKLESS) && defined(GRUB_UTIL)
 /* savedefault_shell */
-static int
+static void
 savedefault_shell(char *arg, int flags)
  {
   int once_only = 0;
@@ -3655,7 +3651,7 @@ savedefault_shell(char *arg, int flags)
         {
           char *p = arg + sizeof ("--default=") - 1;
           if (! safe_parse_maxint (&p, &new_default))
-            return 1;
+            return;
           arg = skip_to (0, arg);
         }
       else if (grub_memcmp ("--once", arg, sizeof ("--once") - 1) == 0)
@@ -3719,7 +3715,7 @@ fail:
 #endif
 
 /* savedefault_helper */
-static int
+static void
 savedefault_helper (char *arg, int flags)
 {
 #if !defined(SUPPORT_DISKLESS)
@@ -3752,7 +3748,7 @@ savedefault_helper (char *arg, int flags)
   if (! (flags & BUILTIN_SCRIPT))
     {
       errnum = ERR_UNRECOGNIZED;
-      return 1;
+      return;
     }
 
   /* Determine a saved entry number.  */
@@ -3778,13 +3774,13 @@ savedefault_helper (char *arg, int flags)
 	    {
 	      /* This is the last.  */
 	      errnum = ERR_BAD_ARGUMENT;
-	      return 1;
+	      return;
 	    }
 
 	  entryno = fallback_entries[index];
 	}
       else if (! safe_parse_maxint (&arg, &entryno))
-	return 1;
+	return;
     }
   else
     entryno = current_entryno;
@@ -3859,10 +3855,9 @@ savedefault_helper (char *arg, int flags)
  fail:
   saved_drive = tmp_drive;
   saved_partition = tmp_partition;
-  return errnum;
+  return;
 #else /* ! SUPPORT_DISKLESS && ! GRUB_UTIL */
   errnum = ERR_UNRECOGNIZED;
-  return 1;
 #endif /* ! SUPPORT_DISKLESS && ! GRUB_UTIL */
 }
 
@@ -3880,7 +3875,7 @@ static struct builtin builtin_savedefault =
 
 #ifdef SUPPORT_SERIAL
 /* serial */
-static int
+static void
 serial_func (char *arg, int flags)
 {
   unsigned short port = serial_hw_get_port (0);
@@ -3901,12 +3896,12 @@ serial_func (char *arg, int flags)
 	  int unit;
 	  
 	  if (! safe_parse_maxint (&p, &unit))
-	    return 1;
+	    return;
 	  
 	  if (unit < 0 || unit > 3)
 	    {
 	      errnum = ERR_DEV_VALUES;
-	      return 1;
+	      return;
 	    }
 
 	  port = serial_hw_get_port (unit);
@@ -3917,7 +3912,7 @@ serial_func (char *arg, int flags)
 	  int num;
 	  
 	  if (! safe_parse_maxint (&p, &num))
-	    return 1;
+	    return;
 
 	  speed = (unsigned int) num;
 	}
@@ -3927,7 +3922,7 @@ serial_func (char *arg, int flags)
 	  int num;
 	  
 	  if (! safe_parse_maxint (&p, &num))
-	    return 1;
+	    return;
 
 	  port = (unsigned short) num;
 	}
@@ -3937,7 +3932,7 @@ serial_func (char *arg, int flags)
 	  int len;
 	  
 	  if (! safe_parse_maxint (&p, &len))
-	    return 1;
+	    return;
 
 	  switch (len)
 	    {
@@ -3947,7 +3942,7 @@ serial_func (char *arg, int flags)
 	    case 8: word_len = UART_8BITS_WORD; break;
 	    default:
 	      errnum = ERR_BAD_ARGUMENT;
-	      return 1;
+	      return;
 	    }
 	}
       else if (grub_memcmp (arg, "--stop=", sizeof ("--stop=") - 1) == 0)
@@ -3956,7 +3951,7 @@ serial_func (char *arg, int flags)
 	  int len;
 	  
 	  if (! safe_parse_maxint (&p, &len))
-	    return 1;
+	    return;
 
 	  switch (len)
 	    {
@@ -3964,7 +3959,7 @@ serial_func (char *arg, int flags)
 	    case 2: stop_bit_len = UART_2_STOP_BITS; break;
 	    default:
 	      errnum = ERR_BAD_ARGUMENT;
-	      return 1;
+	      return;
 	    }
 	}
       else if (grub_memcmp (arg, "--parity=", sizeof ("--parity=") - 1) == 0)
@@ -3980,7 +3975,7 @@ serial_func (char *arg, int flags)
 	  else
 	    {
 	      errnum = ERR_BAD_ARGUMENT;
-	      return 1;
+	      return;
 	    }
 	}
 # ifdef GRUB_UTIL
@@ -4009,10 +4004,10 @@ serial_func (char *arg, int flags)
   if (! serial_hw_init (port, speed, word_len, parity, stop_bit_len))
     {
       errnum = ERR_BAD_ARGUMENT;
-      return 1;
+      return;
     }
   
-  return 0;
+  return;
 }
 
 static struct builtin builtin_serial =
@@ -4116,7 +4111,7 @@ static struct keysym keysym_table[] =
   {"delete",		0,		0x7f,	0,	0x53}
 };
 
-static int
+static void
 setkey_func (char *arg, int flags)
 {
   char *to_key, *from_key;
@@ -4170,13 +4165,13 @@ setkey_func (char *arg, int flags)
       grub_memset (bios_key_map, 0, KEY_MAP_SIZE * sizeof (unsigned short));
       grub_memset (ascii_key_map, 0, KEY_MAP_SIZE * sizeof (unsigned short));
 
-      return 0;
+      return;
     }
   else if (! *from_key)
     {
       /* The user must specify two arguments or zero argument.  */
       errnum = ERR_BAD_ARGUMENT;
-      return 1;
+      return;
     }
   
   nul_terminate (to_key);
@@ -4192,7 +4187,7 @@ setkey_func (char *arg, int flags)
       if (! to_code || ! from_code)
 	{
 	  errnum = ERR_BAD_ARGUMENT;
-	  return 1;
+	  return;
 	}
     }
   
@@ -4214,7 +4209,7 @@ setkey_func (char *arg, int flags)
       if (i == KEY_MAP_SIZE)
 	{
 	  errnum = ERR_WONT_FIT;
-	  return 1;
+	  return;
 	}
       
       if (to_code == from_code)
@@ -4247,7 +4242,7 @@ setkey_func (char *arg, int flags)
       if (i == KEY_MAP_SIZE)
 	{
 	  errnum = ERR_WONT_FIT;
-	  return 1;
+	  return;
 	}
       
       if (to_code == from_code)
@@ -4259,7 +4254,7 @@ setkey_func (char *arg, int flags)
 	ascii_key_map[i] = (to_code << 8) | from_code;
     }
       
-  return 0;
+  return;
 }
 
 static struct builtin builtin_setkey =
@@ -4281,9 +4276,10 @@ static struct builtin builtin_setkey =
 
 
 /* setup */
-static int
+static void
 setup_func (char *arg, int flags)
 {
+  /* !! Create a build without setup_func, install_func and similar functions. */
   /* Point to the string of the installed drive/partition.  */
   char *install_ptr;
   /* Point to the string of the drive/parition where the GRUB images
@@ -4424,7 +4420,7 @@ setup_func (char *arg, int flags)
   /* Make sure that INSTALL_PTR is valid.  */
   set_device (install_ptr);
   if (errnum)
-    return 1;
+    return;
 
   installed_drive = current_drive;
   installed_partition = current_partition;
@@ -4436,7 +4432,7 @@ setup_func (char *arg, int flags)
 	 get the drive and the partition.  */
       set_device (image_ptr);
       if (errnum)
-	return 1;
+	return;
     }
   else
     {
@@ -4560,15 +4556,12 @@ setup_func (char *arg, int flags)
   saved_partition = image_partition;
   
   /* Run the command.  */
-  if (! install_func (cmd_arg, flags))
-    grub_printf ("succeeded\nDone.\n");
-  else
-    grub_printf ("failed\n");
+  install_func (cmd_arg, flags);
+  grub_printf (errnum ? "failed\n" : "succeeded\nDone.\n");
 
  fail:
   saved_drive = tmp_drive;
   saved_partition = tmp_partition;
-  return errnum;
 }
 
 static struct builtin builtin_setup =
@@ -4592,7 +4585,7 @@ static struct builtin builtin_setup =
 
 #if defined(SUPPORT_SERIAL) || defined(SUPPORT_HERCULES) || defined(SUPPORT_GRAPHICS)
 /* terminal */
-static int
+static void
 terminal_func (char *arg, int flags)
 {
   /* The index of the default terminal in TERM_TABLE.  */
@@ -4620,20 +4613,20 @@ terminal_func (char *arg, int flags)
 	  char *val = arg + sizeof ("--timeout=") - 1;
 	  
 	  if (! safe_parse_maxint (&val, &to))
-	    return 1;
+	    return;
 	}
       else if (grub_memcmp (arg, "--lines=", sizeof ("--lines=") - 1) == 0)
 	{
 	  char *val = arg + sizeof ("--lines=") - 1;
 
 	  if (! safe_parse_maxint (&val, &lines))
-	    return 1;
+	    return;
 
 	  /* Probably less than four is meaningless....  */
 	  if (lines < 4)
 	    {
 	      errnum = ERR_BAD_ARGUMENT;
-	      return 1;
+	      return;
 	    }
 	}
       else if (grub_memcmp (arg, "--silent", sizeof ("--silent") - 1) == 0)
@@ -4652,7 +4645,7 @@ terminal_func (char *arg, int flags)
 		   current_term->flags & TERM_DUMB ? " (dumb)" : "",
 		   current_term->flags & TERM_NO_EDIT ? " (no edit)" : "",
 		   current_term->flags & TERM_NO_ECHO ? " (no echo)" : "");
-      return 0;
+      return;
     }
 
   while (*arg)
@@ -4669,7 +4662,7 @@ terminal_func (char *arg, int flags)
 	      if (term_table[i].flags & TERM_NEED_INIT)
 		{
 		  errnum = ERR_DEV_NEED_INIT;
-		  return 1;
+		  return;
 		}
 	      
 	      if (default_term < 0)
@@ -4683,7 +4676,7 @@ terminal_func (char *arg, int flags)
       if (! term_table[i].name)
 	{
 	  errnum = ERR_BAD_ARGUMENT;
-	  return 1;
+	  return;
 	}
 
       arg = next;
@@ -4773,7 +4766,7 @@ terminal_func (char *arg, int flags)
     grub_longjmp (restart_cmdline_env, 0);
   }
   
-  return 0;
+  return;
 }
 
 static struct builtin builtin_terminal =
@@ -4797,7 +4790,7 @@ static struct builtin builtin_terminal =
 
 
 #ifdef SUPPORT_SERIAL
-static int
+static void
 terminfo_func (char *arg, int flags)
 {
   struct terminfo term;
@@ -4843,7 +4836,6 @@ terminfo_func (char *arg, int flags)
 	  if (i == sizeof (options) / sizeof (options[0]))
 	    {
 	      errnum = ERR_BAD_ARGUMENT;
-	      return errnum;
 	    }
 
 	  arg = next;
@@ -4852,7 +4844,6 @@ terminfo_func (char *arg, int flags)
       if (term.name[0] == 0 || term.cursor_address[0] == 0)
 	{
 	  errnum = ERR_BAD_ARGUMENT;
-	  return errnum;
 	}
 
       ti_set_term (&term);
@@ -4874,7 +4865,7 @@ terminfo_func (char *arg, int flags)
 		   ti_escape_string (term.exit_standout_mode));
     }
 
-  return 0;
+  return;
 }
 
 static struct builtin builtin_terminfo =
@@ -4894,7 +4885,7 @@ static struct builtin builtin_terminfo =
 	  
 
 /* testload */
-static int
+static void
 testload_func (char *arg, int flags)
 {
   int i;
@@ -4903,7 +4894,7 @@ testload_func (char *arg, int flags)
   kernel_type = KERNEL_TYPE_NONE;
 
   if (! grub_open (arg))
-    return 1;
+    return;
 
   disk_read_hook = disk_read_print_func;
 
@@ -4963,7 +4954,7 @@ testload_func (char *arg, int flags)
   grub_printf ("Max is 0x10ac0: i=0x%x, filepos=0x%x\n", i, filepos);
   disk_read_hook = 0;
   grub_close ();
-  return 0;
+  return;
 }
 
 static struct builtin builtin_testload =
@@ -4983,7 +4974,7 @@ static struct builtin builtin_testload =
 
 
 /* testvbe MODE */
-static int
+static void
 testvbe_func (char *arg, int flags)
 {
   int mode_number;
@@ -4994,11 +4985,11 @@ testvbe_func (char *arg, int flags)
   if (! *arg)
     {
       errnum = ERR_BAD_ARGUMENT;
-      return 1;
+      return;
     }
 
   if (! safe_parse_maxint (&arg, &mode_number))
-    return 1;
+    return;
 
   /* Preset `VBE2'.  */
   grub_memmove (controller.signature, "VBE2", 4);
@@ -5007,7 +4998,7 @@ testvbe_func (char *arg, int flags)
   if (get_vbe_controller_info (&controller) != 0x004F)
     {
       grub_printf (" VBE BIOS is not present.\n");
-      return 0;
+      return;
     }
   
   if (controller.version < 0x0200)
@@ -5015,21 +5006,21 @@ testvbe_func (char *arg, int flags)
       grub_printf (" VBE version %d.%d is not supported.\n",
 		   (int) (controller.version >> 8),
 		   (int) (controller.version & 0xFF));
-      return 0;
+      return;
     }
 
   if (get_vbe_mode_info (mode_number, &mode) != 0x004F
       || (mode.mode_attributes & 0x0091) != 0x0091)
     {
       grub_printf (" Mode 0x%x is not supported.\n", mode_number);
-      return 0;
+      return;
     }
 
   /* Now trip to the graphics mode.  */
   if (set_vbe_mode (mode_number | (1 << 14)) != 0x004F)
     {
       grub_printf (" Switching to Mode 0x%x failed.\n", mode_number);
-      return 0;
+      return;
     }
 
   /* Draw something on the screen...  */
@@ -5075,7 +5066,7 @@ testvbe_func (char *arg, int flags)
       grub_reboot ();
     }
 
-  return 0;
+  return;
 }
 
 static struct builtin builtin_testvbe =
@@ -5090,17 +5081,17 @@ static struct builtin builtin_testvbe =
 
 #ifdef SUPPORT_NETBOOT
 /* tftpserver */
-static int
+static void
 tftpserver_func (char *arg, int flags)
 {
   if (! *arg || ! ifconfig (0, 0, 0, arg))
     {
       errnum = ERR_BAD_ARGUMENT;
-      return 1;
+      return;
     }
   if (!quiet_boot)
     print_network_configuration ();
-  return 0;
+  return;
 }
 
 static struct builtin builtin_tftpserver =
@@ -5115,15 +5106,15 @@ static struct builtin builtin_tftpserver =
 
 
 /* timeout */
-static int
+static void
 timeout_func (char *arg, int flags)
 {
   (void)arg; (void)flags;
 
   if (! safe_parse_maxint (&arg, &grub_timeout))
-    return 1;
+    return;
 
-  return 0;
+  return;
 }
 
 static struct builtin builtin_timeout =
@@ -5142,13 +5133,13 @@ static struct builtin builtin_timeout =
 
 
 /* title */
-static int
+static void
 title_func (char *arg, int flags)
 {
   (void)arg; (void)flags;
 
   /* This function is not actually used at least currently.  */
-  return 0;
+  return;
 }
 
 static struct builtin builtin_title =
@@ -5167,18 +5158,18 @@ static struct builtin builtin_title =
 
 
 /* unhide */
-static int
+static void
 unhide_func (char *arg, int flags)
 {
   (void)flags;
 
   if (! set_device (arg))
-    return 1;
+    return;
 
   if (! set_partition_hidden_flag (0))
-    return 1;
+    return;
 
-  return 0;
+  return;
 }
 
 static struct builtin builtin_unhide =
@@ -5193,16 +5184,16 @@ static struct builtin builtin_unhide =
 
 
 /* uppermem */
-static int
+static void
 uppermem_func (char *arg, int flags)
 {
   (void)flags;
 
   if (! safe_parse_maxint (&arg, (int *) &mbi.mem_upper))
-    return 1;
+    return;
 
   mbi.flags &= ~MB_INFO_MEM_MAP;
-  return 0;
+  return;
 }
 
 static struct builtin builtin_uppermem =
@@ -5217,7 +5208,7 @@ static struct builtin builtin_uppermem =
 
 
 /* vbeprobe */
-static int
+static void
 vbeprobe_func (char *arg, int flags)
 {
   struct vbe_controller controller;
@@ -5238,7 +5229,7 @@ vbeprobe_func (char *arg, int flags)
   if (*arg)
     {
       if (! safe_parse_maxint (&arg, &mode_number))
-	return 1;
+	return;
     }
   
   /* Set the signature to `VBE2', to obtain VBE 3.0 information.  */
@@ -5247,7 +5238,7 @@ vbeprobe_func (char *arg, int flags)
   if (get_vbe_controller_info (&controller) != 0x004F)
     {
       grub_printf (" VBE BIOS is not present.\n");
-      return 0;
+      return;
     }
 
   /* Check the version.  */
@@ -5256,7 +5247,7 @@ vbeprobe_func (char *arg, int flags)
       grub_printf (" VBE version %d.%d is not supported.\n",
 		   (int) (controller.version >> 8),
 		   (int) (controller.version & 0xFF));
-      return 0;
+      return;
     }
 
   /* Print some information.  */
@@ -5311,7 +5302,7 @@ vbeprobe_func (char *arg, int flags)
   if (mode_number != -1 && mode_number != *mode_list)
     grub_printf ("  Mode 0x%x is not found or supported.\n", mode_number);
   
-  return 0;
+  return;
 }
 
 static struct builtin builtin_vbeprobe =
@@ -5381,17 +5372,17 @@ static int uuid_all_probers(volume_id_probe_fn_t probe_fn,
                   grub_printf("Boot from ");
                   uuid_info_print(id, volume_uuid);
                   uc_data->found = 1;
-                  return 1;
+                  return;
                 }
             }
         }
     }
-  return 0;
+  return;
 }
 
 /* uuid find */
 /* Search for the uuid arg in all of partitions.  */
-static int
+static void
 uuid_func(char *arg, int flag)
 {
   unsigned long drive;
@@ -5450,7 +5441,7 @@ uuid_func(char *arg, int flag)
                 {
                   /* Success! */
                   errnum = ERR_NONE;
-                  return 0;
+                  return;
                 }
 	    }
 	  /* We want to ignore any error here.  */
@@ -5470,9 +5461,9 @@ uuid_func(char *arg, int flag)
   if (!*arg) 
     {
       errnum = ERR_NONE;
-      return 0;
+      return;
     }
-  return 1;
+  return;
 }
 
 static struct builtin builtin_uuid =

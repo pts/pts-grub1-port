@@ -861,7 +861,7 @@ struct builtin
   /* The command name.  */
   char *name;
   /* The callback function.  */
-  int (*func) (char *, int);
+  void (*func) (char *, int);
   /* The combination of the flags defined above.  */
   int flags;
   /* The short version of the documentation.  */
