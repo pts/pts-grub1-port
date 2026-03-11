@@ -163,6 +163,7 @@ struct multiboot_info
   /* APM table */
   unsigned long apm_table;
 
+#if 0  /* Unused by GRUB. */
   /* Video */
   unsigned long vbe_control_info;
   unsigned long vbe_mode_info;
@@ -170,6 +171,7 @@ struct multiboot_info
   unsigned short vbe_interface_seg;
   unsigned short vbe_interface_off;
   unsigned short vbe_interface_len;
+#endif
 };
 
 /*
