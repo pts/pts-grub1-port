@@ -94,7 +94,11 @@ struct fsys_entry fsys_table[NUM_FSYS + 1] =
 
 
 /* These have the same format as "boot_drive" and "install_partition", but
-   are meant to be working values. */
+ * are meant to be working values.
+ *
+ * grub_open(...), setup_part(...), open_device(...), open_partition(...)
+ * change these values.
+ */
 unsigned long current_drive = GRUB_INVALID_DRIVE;
 unsigned long current_partition;
 
@@ -118,7 +122,14 @@ int fsys_type = NUM_FSYS;
 static int block_file = 0;
 #endif /* NO_BLOCK_FILES */
 
-/* these are the translated numbers for the open partition */
+/* these are the translated numbers for the open partition
+ *
+ * grub_open(...), setup_part(...), open_device(...), open_partition(...)
+ * change these values.
+ *
+ * part_start is the hidden sector count of (current_drive,
+ * current_partition), also called as partition offset (LBA).
+ */
 unsigned long part_start;
 unsigned long part_length;
 
