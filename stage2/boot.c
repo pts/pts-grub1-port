@@ -499,7 +499,9 @@ load_image (char *kernel, char *arg, kernel_t suggested_type,
   mbi.cmdline = (int) arg;
   mbi.mods_count = 0;
   mbi.mods_addr = 0;
-  mbi.boot_device = (current_drive << 24) | current_partition;
+#if 0  /* Will be set by boot_func using saved_drive and saved_partition, no need to set it here. */
+  mbi.boot_device = (current_drive << 24) | current_partition;  /* Not done. */
+#endif
   mbi.flags &= ~(MB_INFO_MODS | MB_INFO_AOUT_SYMS | MB_INFO_ELF_SHDR);
   mbi.syms.a.tabsize = 0;
   mbi.syms.a.strsize = 0;
