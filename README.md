@@ -21,10 +21,18 @@ User-visible changes to GRUB 0.97-29ubuntu68:
   present.
 * GRUB (just like GRUB4DOS 0.4.4) can boot *chainloader* files longer than
   512 bytes; the limit is now 585 KiB.
-* GRUB sets the Multiboot v1 boot_device field at *boot* (last minute)
-  to the drive and partition current at *boot* (either by default or set by
-  the most recent *root* command). This matches what *boot* of *chainloader*
-  has been doing.
+* When booting in Linux mode (e.g. with *kernel --type=linux*), GRUB
+  recognizes the [UKH](https://github.com/pts/ukh) header, and passes the
+  boot device, boot partition number and boot hidden sector count (partition
+  offset (LBA)). Prevously, none of these were passed in Linux mode. Please
+  note that real Linux kernels are not affected, because they don't have the
+  UKH header.
+* Constently for booting Multiboot, Linux and *chainloader*, GRUB sets the
+  boot device (BIOS boot drive number) and the boot partition passed to the
+  kernel to currently active *root* device and partition (either by default,
+  or set byte most recent *root* or *uuid* command). (Please note that the
+  boot partition is still not passed for *chainloader*.) This matches what
+  *boot* of *chainloader* has been doing.
 * Quiet mode is disabled by default (to match GRUB4DOS 0.4.4).
 * The *quiet* command enables quiet boot mode. (Bugs fixed.)
 * Bugfixes.

@@ -1233,5 +1233,13 @@ set_boot_partition_for_linux_ukh ()
 	 */
 	((char*)lh)[0x26] = saved_partition >> 16;  /* Partition number for UKH kernels. */
 	((char*)lh)[0x27] = saved_drive;  /* BIOS boot drive number for UKH kernels. */
+	if (current_drive != saved_drive || current_partition != saved_partition) {
+	    current_drive = saved_drive;
+	    current_partition = saved_partition;
+	    if (open_partition ()) goto set_hidden_sector_count;
+	    /* No need to change current_drive etc., we won't return to the GRUB menu. */
+	} else { set_hidden_sector_count:
+	    lh->ramdisk_size = part_start;
+	}
     }
 }
