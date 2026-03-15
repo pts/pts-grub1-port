@@ -24,7 +24,7 @@
 # include <graphics.h>
 #endif
 
-int col_start, col_end, row_start, box_size;
+static int col_start, col_end, row_start1, box_size;
 
 grub_jmp_buf restart_env;
 
@@ -113,11 +113,11 @@ print_entry (int y, int highlight, char *entry)
 
   gotoxy (2 + col_start, y);
   grub_putchar (' ');
-  for (x = 3 + col_start; x < (col_end - 5); x++)
+  for (x = 3 + col_start; x < (col_end - 2); x++)
     {
-      if (*entry && x <= (col_end - 8))
+      if (*entry && x <= (col_end - 5))
 	{
-	  if (x == (col_end - 8))
+	  if (x == (col_end - 5))
 	    grub_putchar (DISP_RIGHT);
 	  else
 	    grub_putchar (*entry++);
@@ -125,7 +125,7 @@ print_entry (int y, int highlight, char *entry)
       else
 	grub_putchar (' ');
     }
-  gotoxy ((col_end - 6), y);
+  gotoxy ((col_end - 3), y);
 
   if (current_term->setcolorstate)
     current_term->setcolorstate (COLOR_STATE_STANDARD);
@@ -137,12 +137,12 @@ print_entries (int y, int size, int first, int entryno, char *menu_entries)
 {
   int i;
   
-  gotoxy ((col_end - 3), y + 1);
+  gotoxy ((col_end - 2), y + 1);  /* -4 instead of -5 would move it to the next line */
 
   if (first)
     grub_putchar (DISP_UP);
   else
-    grub_putchar (' ');
+    grub_putchar (DISP_VERT  /* ' ' */);
 
   menu_entries = get_entry (menu_entries, first, 0);
 
@@ -157,14 +157,14 @@ print_entries (int y, int size, int first, int entryno, char *menu_entries)
 	menu_entries++;
     }
 
-  gotoxy ((col_end - 3), y + size);
+  gotoxy ((col_end - 2), y + size);
 
-  if (*menu_entries)
+  if (*menu_entries)  /* !! This shows the down arrow unconditionally. */
     grub_putchar (DISP_DOWN);
   else
-    grub_putchar (' ');
+    grub_putchar (DISP_VERT  /* ' ' */);
 
-  gotoxy ((col_end - 6), y + entryno + 1);
+  gotoxy ((col_end - 3), y + entryno + 1);
 }
 
 static void
@@ -205,7 +205,7 @@ print_border (int y, int size)
   gotoxy (1 + col_start, y);
 
   grub_putchar (DISP_UL);
-  for (i = col_start; i < (col_end - 7); i++)
+  for (i = col_start; i < (col_end - 4); i++)
     grub_putchar (DISP_HORIZ);
   grub_putchar (DISP_UR);
 
@@ -218,14 +218,14 @@ print_border (int y, int size)
 	break;
       
       grub_putchar (DISP_VERT);
-      gotoxy ((col_end - 5), y + i);
+      gotoxy ((col_end - 2), y + i);
       grub_putchar (DISP_VERT);
 
       i++;
     }
 
   grub_putchar (DISP_LL);
-  for (i = col_start; i < (col_end - 7); i++)
+  for (i = col_start; i < (col_end - 4); i++)
     grub_putchar (DISP_HORIZ);
   grub_putchar (DISP_LR);
 
@@ -259,8 +259,8 @@ restart:
 
   col_start = 0;
   col_end = 80;
-  row_start = 0;
-  box_size = 12;
+  row_start1 = 1;
+  box_size = 20;  /* Maximum number of menu entries displayed on screen. */
   /* if we're using viewport we need to make sure to setup
      coordinates correctly.  */
 #ifdef SUPPORT_GRAPHICS
@@ -268,7 +268,7 @@ restart:
     {
       col_start = view_x0;
       col_end = view_x1;
-      row_start = view_y0;
+      row_start1 = view_y0 + 1;
       box_size = (view_y1 - view_y0) - 13;
     }
 #endif
@@ -329,36 +329,17 @@ restart:
       if (current_term->flags & TERM_DUMB)
 	print_entries_raw (num_entries, first_entry, menu_entries);
       else
-	print_border (3 + row_start, box_size);
+	print_border (row_start1, box_size);
 
-      grub_printf ("\n\
-    Use the %c and %c keys to select which entry is highlighted.\n",
-		   DISP_UP, DISP_DOWN);
-      
-      if (! auth && password)
-	{
-	  printf ("\
-    Press enter to boot the selected OS or \'p\' to enter a\n\
-    password to unlock the next set of features.");
-	}
-      else
-	{
-	  if (config_entries)
-	    printf ("\
-    Press enter to boot the selected OS, \'e\' to edit the\n\
-    commands before booting, or \'c\' for a command-line.");
-	  else
-	    printf ("\
-    Press \'b\' to boot, \'e\' to edit the selected command in the\n\
-    boot sequence, \'c\' for a command-line, \'o\' to open a new line\n\
-    after (\'O\' for before) the selected line, \'d\' to remove the\n\
-    selected line, or escape to go back to the main menu.");
-	}
-
+      grub_printf ("\n Press %c or %c to select, %s.\n",
+		   DISP_UP, DISP_DOWN,
+                   (!auth && password) ? "Enter to boot, p to enter a password" :
+                   (config_entries) ? "Enter to boot, e to edit entry, c for command line" :
+                   "b boot, e/o/O/d edit/add/add/delete line, Esc back");
       if (current_term->flags & TERM_DUMB)
 	grub_printf ("\n\nThe selected entry is %d ", entryno);
       else
-	print_entries (3 + row_start, box_size, first_entry, entryno, menu_entries);
+	print_entries (row_start1, box_size, first_entry, entryno, menu_entries);
     }
 
   /* XX using RT clock now, need to initialize value */
@@ -385,10 +366,10 @@ restart:
 			   entryno, grub_timeout);
 	  else
 	    {
-	      gotoxy (3 + col_start, 10 + box_size + row_start);
+	      gotoxy (col_start, 3 + box_size + row_start1);
 	      grub_printf (" The highlighted entry will be booted automatically in %d seconds.   ",
 			   grub_timeout);
-	      gotoxy ((col_end - 6), 4 + entryno + row_start);
+	      gotoxy ((col_end - 3), 1 + entryno + row_start1);
 	  }
 	  
 	  grub_timeout--;
@@ -414,12 +395,12 @@ restart:
 	      if (current_term->flags & TERM_DUMB)
 		grub_putchar ('\r');
 	      else
-		gotoxy (3 + col_start, 10 + box_size + row_start);
-	      printf ("                                                                    ");
+		gotoxy (col_start, 3 + box_size + row_start1);
+	      grub_printf ("                                                                    ");
 	      grub_timeout = -1;
 	      fallback_entryno = -1;
 	      if (! (current_term->flags & TERM_DUMB))
-		gotoxy ((col_end - 6), 4 + entryno + row_start);
+		gotoxy ((col_end - 3), 1 + entryno + row_start1);
 	    }
 
 	  /* We told them above (at least in SUPPORT_SERIAL) to use
@@ -435,12 +416,12 @@ restart:
 		{
 		  if (entryno > 0)
 		    {
-		      print_entry (4 + entryno + row_start, 0,
+		      print_entry (1 + entryno + row_start1, 0,
 				   get_entry (menu_entries,
 					      first_entry + entryno,
 					      0));
 		      entryno--;
-		      print_entry (4 + entryno + row_start, 1,
+		      print_entry (1 + entryno + row_start1, 1,
 				   get_entry (menu_entries,
 					      first_entry + entryno,
 					      0));
@@ -448,7 +429,7 @@ restart:
 		  else if (first_entry > 0)
 		    {
 		      first_entry--;
-		      print_entries (3 + row_start, box_size, first_entry, entryno,
+		      print_entries (row_start1, box_size, first_entry, entryno,
 				     menu_entries);
 		    }
 		}
@@ -462,12 +443,12 @@ restart:
 		{
 		  if (entryno < (box_size - 1))
 		    {
-		      print_entry (4 + entryno + row_start, 0,
+		      print_entry (1 + entryno + row_start1, 0,
 				   get_entry (menu_entries,
 					      first_entry + entryno,
 					      0));
 		      entryno++;
-		      print_entry (4 + entryno + row_start, 1,
+		      print_entry (1 + entryno + row_start1, 1,
 				   get_entry (menu_entries,
 					      first_entry + entryno,
 					      0));
@@ -475,7 +456,7 @@ restart:
 		else if (num_entries > box_size + first_entry)
 		  {
 		    first_entry++;
-		    print_entries (3 + row_start, box_size, first_entry, entryno, menu_entries);
+		    print_entries (row_start1, box_size, first_entry, entryno, menu_entries);
 		  }
 		}
 	    }
@@ -490,7 +471,7 @@ restart:
 		  if (entryno < 0)
 		    entryno = 0;
 		}
-	      print_entries (3 + row_start, box_size, first_entry, entryno, menu_entries);
+	      print_entries (row_start1, box_size, first_entry, entryno, menu_entries);
 	    }
 	  else if (c == 3)
 	    {
@@ -503,7 +484,7 @@ restart:
 		    first_entry = 0;
 		  entryno = num_entries - first_entry - 1;
 		}
-	      print_entries (3 + row_start, box_size, first_entry, entryno, menu_entries);
+	      print_entries (row_start1, box_size, first_entry, entryno, menu_entries);
 	    }
 
 	  if (config_entries)
@@ -516,7 +497,7 @@ restart:
 	      if ((c == 'd') || (c == 'o') || (c == 'O'))
 		{
 		  if (! (current_term->flags & TERM_DUMB))
-		    print_entry (4 + entryno + row_start, 0,
+		    print_entry (1 + entryno + row_start1, 0,
 				 get_entry (menu_entries,
 					    first_entry + entryno,
 					    0));
@@ -576,7 +557,7 @@ restart:
 		      grub_printf ("\n");
 		    }
 		  else
-		    print_entries (3 + row_start, box_size, first_entry, entryno, menu_entries);
+		    print_entries (row_start1, box_size, first_entry, entryno, menu_entries);
 		}
 
 	      cur_entry = menu_entries;
@@ -597,7 +578,7 @@ restart:
 		  if (current_term->flags & TERM_DUMB)
 		    grub_printf ("\r                                    ");
 		  else
-		    gotoxy (1 + col_start, 9 + box_size + row_start);
+		    gotoxy (1 + col_start, 2 + box_size + row_start1);
 
 		  /* Wipe out the previously entered password */
 		  grub_memset (entered, 0, sizeof (entered));
@@ -637,7 +618,9 @@ restart:
 		    }
 		  else
 		    {
-		      grub_printf ("Failed!\n      Press any key to continue...");
+		      if (!(current_term->flags & TERM_DUMB))
+			gotoxy (1 + col_start, 3 + box_size + row_start1);
+		      grub_printf ("Password incorrect. Press any key to continue...");
 		      getkey ();
 		      goto restart;
 		    }

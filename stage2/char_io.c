@@ -795,7 +795,8 @@ real_get_cmdline (char *prompt, char *cmdline, int maxlen,
 	}
     }
 
-  grub_putchar ('\n');
+  if (! echo_char || current_term->flags & TERM_DUMB)
+    grub_putchar ('\n');
 
   /* If ECHO_CHAR is NUL, remove the leading spaces.  */
   lpos = 0;
