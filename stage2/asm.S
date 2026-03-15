@@ -219,7 +219,7 @@ codestart:
 	 *  Call the start of main body of C code, which does some
 	 *  of it's own initialization before transferring to "cmain".
 	 */
-	call EXT_C(init_bios_info)
+	jmp EXT_C(init_bios_info)
 
 
 /*
