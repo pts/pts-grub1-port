@@ -33,6 +33,7 @@ User-visible changes to GRUB 0.97-29ubuntu68:
   or set byte most recent *root* or *uuid* command). (Please note that the
   boot partition is still not passed for *chainloader*.) This matches what
   *boot* of *chainloader* has been doing.
+* Upon startup, the video mode is changed to 80x25 text.
 * The menu is wider and taller on the 80x25 screen, similar to GRUB4DOS 0.4.4.
 * Quiet mode is disabled by default (to match GRUB4DOS 0.4.4).
 * The *quiet* command enables quiet boot mode. (Bugs fixed.)

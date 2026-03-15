@@ -214,6 +214,10 @@ codestart:
 	/* clean out */
 	rep
 	stosb
+
+	push $3  /* Video mode 80x25, color. */
+	call EXT_C(set_videomode)  /* We set the video mode, in case another program has called `int $0x19' in the wrong video mode. */
+	pop %eax
 	
 	/*
 	 *  Call the start of main body of C code, which does some
@@ -2461,13 +2465,11 @@ int1c_done:
 int1c_offset:  .word   0
 int1c_segment: .word   0
 	.code32
-
+#endif  /* SUPPORT_GRAPHICS */
 
 /*
  * unsigned char set_videomode(unsigned char mode)
  * BIOS call "INT 10H Function 0h" to set video mode
- *	Call with	%ah = 0x0
- *			%al = video mode
  *  Returns old videomode.
  */
 ENTRY(set_videomode)
@@ -2501,11 +2503,10 @@ ENTRY(set_videomode)
 	ret
 
 
+#ifdef SUPPORT_GRAPHICS
 /*
  * int get_videomode()
  * BIOS call "INT 10H Function 0Fh" to get current video mode
- *	Call with	%al = 0x0
- *			%ah = 0xF
  *	Returns current videomode.
  */
 ENTRY(get_videomode)
