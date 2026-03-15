@@ -3493,8 +3493,8 @@ print_root_device (void)
     }
 
   /* Print the filesystem information.  */
-  current_partition = saved_partition;
   current_drive = saved_drive;
+  current_partition = saved_partition;
   if (!quiet_boot)
     print_fsys_type ();
 }
